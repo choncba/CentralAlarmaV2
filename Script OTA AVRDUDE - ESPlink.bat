@@ -1,0 +1,2 @@
+C:\Program Files (x86)\Arduino\hardware\tools\avr\bin\avrdude.exe -DV -p ATmega2560 -Pnet:192.168.1.120:23 -carduino -b115200 -U flash:w:C:\Users\Administrador.WIN-BH3TN22634N\OneDrive\Platform\Pruebas Central Alarma V2\MQTT-JSON\.pio\build\megaatmega2560\firmware.hex:i -C C:\Program Files (x86)\Arduino\hardware\tools\avr\etc\avrdude.conf
+pause
