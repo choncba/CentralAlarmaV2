@@ -1,27 +1,27 @@
-//////////////////////////////////////////////////////////////////////////////////////
-//        Central de Alarma V2 con conectividad MQTT a través de ESP-Link           //
-//                                                                                  //
-//    Hardware:                                                                     //
-//            - ATMEGA1284P                                                         //
-//            - ESP8266 - ESP01 4MBIT                                               //
-//            - Módulo GSM SIM800L                                                  //
-//            - DS18B20                                                             //
-//            - DHT22                                                               //
-//            - LCR                                                                 //
-//            - Módulos DC/DC para carga de Batería 12v y regulación +5v            //
-//            - Salidas a sirenas con MOSFET                                        //
-//            - Entradas para llavero RF con PT2272-L4                              //
-//            - Modulo de medicion de Potencia AC                                   //
-//    Esquematico: https://easyeda.com/editor#id=|d1a352035b8044ac87127abeea01cdcf  //
-//                                                                                  //
-//    Software:                                                                     //
-//            - ATMEGA1284: Mighty Core (cargar bootloader desde Arduino usando la  //
-//                          opcion USBASP (Mighty Core))                            //
-//                          ELClient para protocolo SLIP y MQTT                     //
-//                          ThreadedGSM - version modificada                        //
-//            - ESP8266: esp-link v3.0.14-g963ffbb                                  //
-//            - Controller: HomeAssistant - Ver configuracion al final              //
-//                                                                                  //
-//            Envio y recepción de comandos JSON por MQTT                           //
-//                                                                                  //
-//////////////////////////////////////////////////////////////////////////////////////
+# Domotic Central Alarm System for Home Assistant
+## Wireless WiFi Comunication with MQTT-JSON trough ESP8266 and ESP-Link firmware
+### Main Board Hardware:
+* ATMEGA1284P
+* ESP8266 - ESP01 4MBIT
+* SIM800L GSM Module
+* DS18B20 Temperature sensor
+* DHT22 Temperature/Humidity Sensor
+* Resistive LCR Sensor
+* DC/DC module for battery charge and +5v Power
+* Dual MOSFET outputs for Sirens
+* PT2272-L4 RF module for local wireless functions
+* AC power measurement module PZEM22
+
+### Main Board Firmware
+* ATMEGA1284P uses [Mighty Core](https://github.com/MCUdude/MightyCore)
+* [ELClient](https://github.com/jeelabs/el-client/tree/master/ELClient) - SLIP & MQTT communication to [ESP-Link](https://github.com/jeelabs/esp-link)
+* ThreadedGSM - modified version
+* Adafruit Unified Sensor
+* DHT sensor library
+* OneWire
+* DallasTemperature
+* ArduinoJson
+
+### Controller: [HomeAssistant]()
+
+### [Schematic](https://easyeda.com/editor#id=|d1a352035b8044ac87127abeea01cdcf)
