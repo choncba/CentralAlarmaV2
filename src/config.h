@@ -38,7 +38,18 @@
 #define SerialDebug     Serial
 #define SerialModem     Serial1        // Modulo SIM800 conectado al Serial1 por hardware
 
+#define DEBUG
+
+#ifdef DEBUG
+#define DEBUG_PRINT(x)      SerialDebug.print(x)
+#define DEBUG_PRINTLN(x)    SerialDebug.println(x) 
+#else
+#define DEBUG_PRINT(x)
+#define DEBUG_PRINTLN(x)
+#endif
+
 // Habilitar funciones
+#define USE_EEPROM          // Almacena datos de configuracion en memoria
 #define USE_GSM             // Modulo GSM SIM800L
 #define USE_SENSOR_DHT22    // Habilita/Deshabilita DHT22
 #define USE_SENSOR_18B20    // Habilita/Deshabilita 18B20 
@@ -46,7 +57,37 @@
 #define USE_SENSOR_POWER    // Habilita/Deshabilita medidor de potencia
 #define USE_RF              // Habilita/Deshabilita entradas RF
 
-// MQTT
+/// *** Parametros de la alarma *** ///
+#define ALARM_INPUTS    8   // Numero de entrada de sensores
+#define RF_INPUTS       4   // Numero de entradas RF/llavero
+#define NUM_STATUS      5   // Estados posibles de la alarma para HA
+#define NUM_PHONES      5   // Numeros de telefono almacenados
+// Comandos enviados/recibidos con HA
+enum Alarm_Status_enum { DISARMED=0, ARMED_HOME, ARMED_AWAY, PENDING, TRIGGERED };
+const char AlarmStatus[NUM_STATUS][11] = { "disarmed", "armed_home", "armed_away", "pending", "triggered"};
+const char AlarmCMD[NUM_STATUS][11] = { "DISARM", "ARM_HOME", "ARM_AWAY", "PENDING", "TRIGGERED"};
+// Comandos recibidos por SMS
+#define NUM_COMANDOS 10
+const char comandos[NUM_COMANDOS][12] = {"ACTIVAR","DESACTIVAR","INFO","SAVE","DELETE","LIST","PIN","ENTRADA","FACTORY", "INPUTFUN"};
+enum comandos_enum {ACTIVAR=0,DESACTIVAR,INFO,SAVE,DELETE,LIST,PIN,ENTRADA,FACTORY,INPUTFUN};
+// Modos de seteo de las entradas
+const char modes[5][20] = {"Desactivada", "ACT Total/Parcial", "ACT Total", "ACT Siempre", "ACT Demorada"};
+
+/////////////////////////////////////////
+
+// Parametros MQTT - La configuración de conexión al servidor se realiza desde ESP-Link
 bool connected;       // Flag que indica conexión MQTT OK
 #define RETAIN  true  // Flag retain para publicaciones mqtt
 #define QoS     0     // QoS de payload MQTT
+#define NUM_PUBLISHED_TOPIC 3
+#define NUM_SUSCRIBED_TOPIC 1
+
+#define MQTT_CLIENT_ID "CentralAlarma"
+#define BASE_TOPIC "/" MQTT_CLIENT_ID
+#define STATUS_TOPIC BASE_TOPIC "/status"
+#define SET_TOPIC BASE_TOPIC "/set"
+#define MQTT_AVAILABILITY_TOPIC STATUS_TOPIC "/LWT"
+#define MQTT_CONNECTED_STATUS "online"
+#define MQTT_DISCONNECTED_STATUS "offline"
+
+

@@ -1,5 +1,5 @@
 # Domotic Central Alarm System for Home Assistant
-## Wireless WiFi Comunication with MQTT-JSON trough ESP8266 and ESP-Link firmware
+## ATMEGA1284P as main controller, uses Wireless WiFi Comunication with MQTT-JSON trough ESP8266 and ESP-Link firmware
 ### Main Board Hardware:
 * ATMEGA1284P
 * ESP8266 - ESP01 4MBIT
