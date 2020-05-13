@@ -36,20 +36,18 @@ struct
 struct
 {
 	char data_set;
-	char inputs_names[ALARM_INPUTS][20] = { "","","","","","","","" };	// Nombres de las entradas
-    uint8_t inputs_function[ALARM_INPUTS] = { 1, 1, 1, 1, 1, 1, 1, 1 }; // Funciones de las entradas
-	char PIN[5] = {"1234"};						                        // clave PIN
+	char inputs_names[ALARM_INPUTS][20] = { "","","","","","","","" };	    // Nombres de las entradas
+    uint8_t inputs_function[ALARM_INPUTS] = { 1, 1, 1, 1, 1, 1, 1, 1 };   // Funciones de las entradas
+	char PIN[5] = "1234";						                                        // clave PIN
 	char reg_numbers[NUM_PHONES][15] = { "", "", "", "", "" };	            // Números de teléfono de la agenda
 }Options;
 
 unsigned long timer;
 
-#pragma region MQTT
-const char NombreTopic[] = {"/CentralAlarma"};
-String StringTopic = "";
-char CharTopic[100];
-String StringData = "";
-char CharData[10];
+// String StringTopic = "";
+// char CharTopic[100];
+// String StringData = "";
+// char CharData[10];
 
 // Callback made from esp-link to notify of wifi status changes
 void wifiCb(void* response) {
@@ -68,11 +66,15 @@ void wifiCb(void* response) {
 }
 
 // Callback when MQTT is connected
+// Para poder recibir JSON largos se modifico en ELClient.h:
+//        uint8_t _protoBuf[128]; /**< Protocol buffer */
+// Por:   uint8_t _protoBuf[512]; /**< Protocol buffer */
 void mqttConnected(void* response) {
   DEBUG_PRINTLN(F("MQTT connected!"));
   connected = true;
 
   mqtt.subscribe(SET_TOPIC);
+  mqtt.subscribe(OPTIONS_TOPIC);
   mqtt.publish(MQTT_AVAILABILITY_TOPIC,MQTT_CONNECTED_STATUS,QoS,RETAIN);
 }
 
@@ -94,114 +96,101 @@ void mqttData(void* response) {
   String data = res->popString();
   DEBUG_PRINTLN(data);
 
-//   if(topic.indexOf("/set")>0)  // Si el topic contiene "/set"
-//   {
-//     if(data.equals("DISARM"))
-//     {
-//       Status.AlarmNextStatus = DISARMED;
-//       DEBUG_PRINTLN("Alarma desactivada via MQTT");
-//     }
-//     if(data.equals("ARM_HOME"))
-//     {
-//       Status.AlarmNextStatus = ARMED_HOME;
-//       DEBUG_PRINTLN("Alarma Activada en casa via MQTT");
-//     } 
-//     if(data.equals("ARM_AWAY"))
-//     {
-//       Status.AlarmNextStatus = ARMED_AWAY;
-//       DEBUG_PRINTLN("Alarma Activada Fuera de casa via MQTT");
-//     }
-//   }
 }
 
 void mqttPublished(void* response) {
   DEBUG_PRINTLN(F("MQTT published"));
 }
 
-// Publica todas las variables en un unico JSON
-/* Ejemplo de JSON, ver espacio necesario con https://arduinojson.org/v6/assistant/
-{
-  "central_alarma":
-  {
-    "status": "online",
-    "alarm":{
-      "status": "disarmed",
-      "trigger_cause": "IN2",
-      "inputs_status":[0,0,0,0,0,0,0,0],
-      "inputs_names":["","","","","","","",""],
-      "inputs_function":[0,0,0,0,0,0,0,0]
-    },
-    "sensors":{
-      "temp_int":"25.0",
-      "temp_ext":"27.8",
-      "hum_ext":"33",
-      "lcr":"90",
-      "v_bat":"12.84",
-      "vac":"1",
-      "voltage":"220",
-      "current":"1.35",
-      "power":"875.2",
-      "energy":"1385"
-    },
-    "gsm":{
-      "status":1,
-      "signal_level":"33"
-    },
-    "rf":[0,0,0,0]
+/***
+* // Publica todas las variables en un unico JSON
+* Ejemplo de JSON, ver espacio necesario con https://arduinojson.org/v6/assistant/
+* Topic: /CentralAlarma/status
+* Data:
+* {
+  "status":1,
+  "alarm":{
+    "status": 0,
+    "trigger_cause": 1,
+    "pin": 12345678,
+    "inputs_status":[0,0,0,0,0,0,0,0],
+    "inputs_names":["01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789"],
+    "inputs_function":[0,0,0,0,0,0,0,0]
+  },
+  "sensors":{
+    "temp_int":99.99,
+    "temp_ext":99.99,
+    "hum_ext":99,
+    "lcr":99,
+    "v_bat":99.99,
+    "vac":1,
+    "voltage":999,
+    "current":99.99,
+    "power":9999.99,
+    "energy":999999
+  },
+  "gsm":{
+        "status":1,
+        "signal_level":99,
+        "numbers":["01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789"]
+  },
+  "rf":[0,0,0,0]
   }
-}
-*/
+***/
 
 void PublicarMQTT(void* context)
 {
   (void)context;
   if(connected){
-    uint8_t i;
-    const size_t capacity = JSON_ARRAY_SIZE(4) + 3*JSON_ARRAY_SIZE(8) + JSON_OBJECT_SIZE(1) + JSON_OBJECT_SIZE(2) + 2*JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(10);
+    const size_t capacity = JSON_ARRAY_SIZE(4) + JSON_ARRAY_SIZE(5) + 3*JSON_ARRAY_SIZE(8) + JSON_OBJECT_SIZE(3) + JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(6) + JSON_OBJECT_SIZE(10) + 520;
     DynamicJsonDocument doc(capacity);
 
-    JsonObject central_alarma = doc.createNestedObject("central_alarma");
-    central_alarma["status"] = "online";
+    doc["status"] = 1;
 
-    JsonObject central_alarma_alarm = central_alarma.createNestedObject("alarm");
-    central_alarma_alarm["status"] = AlarmStatus[Status.AlarmStatus];
-    central_alarma_alarm["trigger_cause"] = Options.inputs_names[Status.TriggerCause];
-    
-    JsonArray central_alarma_alarm_inputs_status = central_alarma_alarm.createNestedArray("inputs_status");
-    JsonArray central_alarma_alarm_inputs_names = central_alarma_alarm.createNestedArray("inputs_names");
-    JsonArray central_alarma_alarm_inputs_function = central_alarma_alarm.createNestedArray("inputs_function");
-    for(i=0; i<ALARM_INPUTS;i++){
-      central_alarma_alarm_inputs_status.add(Status.Entrada[i]);
-      central_alarma_alarm_inputs_names.add(Options.inputs_names[i]);
-      central_alarma_alarm_inputs_function.add(Options.inputs_function[i]);
+    JsonObject alarm = doc.createNestedObject("alarm");
+    alarm["status"] = Status.AlarmStatus;
+    alarm["trigger_cause"] = Status.TriggerCause;
+    alarm["pin"] = Options.PIN;
+
+    JsonArray alarm_inputs_status = alarm.createNestedArray("inputs_status");
+    JsonArray alarm_inputs_names = alarm.createNestedArray("inputs_names");
+    JsonArray alarm_inputs_function = alarm.createNestedArray("inputs_function");
+    for(int i=0; i < ALARM_INPUTS; i++){
+      alarm_inputs_status.add(Status.Entrada[i]);
+      alarm_inputs_names.add((String)Options.inputs_names[i]);
+      alarm_inputs_function.add(Options.inputs_function[i]);
     }
 
-    JsonObject central_alarma_sensors = central_alarma.createNestedObject("sensors");
-    central_alarma_sensors["temp_int"] = Status.InsideTemp;
-    central_alarma_sensors["temp_ext"] = Status.OutsideTemp;
-    central_alarma_sensors["hum_ext"] = Status.OutsideHum;
-    central_alarma_sensors["lcr"] = Status.LumExt;
-    central_alarma_sensors["v_bat"] = Status.Vbat;
-    central_alarma_sensors["vac"] = Status.Vac;
-    central_alarma_sensors["voltage"] = Status.voltage;
-    central_alarma_sensors["current"] = Status.current;
-    central_alarma_sensors["power"] = Status.power;
-    central_alarma_sensors["energy"] = Status.energy;
+    JsonObject sensors = doc.createNestedObject("sensors");
+    sensors["temp_int"] = Status.InsideTemp;
+    sensors["temp_ext"] = Status.OutsideTemp;
+    sensors["hum_ext"] = Status.OutsideHum;
+    sensors["lcr"] = Status.LumExt;
+    sensors["v_bat"] = Status.Vbat;
+    sensors["vac"] = Status.Vac;
+    sensors["voltage"] = Status.voltage;
+    sensors["current"] = Status.current;
+    sensors["power"] = Status.power;
+    sensors["energy"] = Status.energy;
 
-    JsonObject central_alarma_gsm = central_alarma.createNestedObject("gsm");
-    central_alarma_gsm["status"] = Status.GsmStatus;
-    central_alarma_gsm["signal_level"] = Status.GsmSignal;
+    JsonObject gsm = doc.createNestedObject("gsm");
+    gsm["status"] = Status.GsmStatus;
+    gsm["signal_level"] = Status.GsmSignal;
 
-    JsonArray central_alarma_rf = central_alarma.createNestedArray("rf");
-    for(i=0; i<RF_INPUTS;i++){
-      central_alarma_rf.add(Status.RFin[i]);
+    JsonArray gsm_numbers = gsm.createNestedArray("numbers");
+    for(int i=0; i<NUM_PHONES; i++){
+      gsm_numbers.add((String)Options.reg_numbers[i]);
+    }
+
+    JsonArray rf = doc.createNestedArray("rf");
+    for(int i=0; i<RF_INPUTS; i++){
+      rf.add(Status.RFin[i]);
     }
     
     char DataMQTT[capacity];
-    mqtt.publish(NombreTopic, DataMQTT, QoS, RETAIN);
+    serializeJson(doc, DataMQTT);
+    mqtt.publish(STATUS_TOPIC, DataMQTT, QoS, RETAIN);
 
-    //size_t n = serializeJson(doc, DataMQTT);
-    //mqtt.publish(NombreTopic, DataMQTT, n, QoS, RETAIN);
   }
 }
 #pragma endregion
@@ -261,8 +250,8 @@ void loop(){
 
     // Genero valores aleatorios para sensores y cambio entradas
     for(int i=0;i<ALARM_INPUTS;i++){
-        Status.Entrada[i]^=1;
-        if(i<RF_INPUTS) Status.RFin[i]^=1;
+        (Status.Entrada[i])?0:1;
+        if(i<RF_INPUTS) (Status.RFin[i])?0:1;
     }
 
     Status.Vac ^=1;

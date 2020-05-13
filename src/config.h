@@ -82,12 +82,14 @@ bool connected;       // Flag que indica conexión MQTT OK
 #define NUM_PUBLISHED_TOPIC 3
 #define NUM_SUSCRIBED_TOPIC 1
 
-#define MQTT_CLIENT_ID "CentralAlarma"
-#define BASE_TOPIC "/" MQTT_CLIENT_ID
-#define STATUS_TOPIC BASE_TOPIC "/status"
-#define SET_TOPIC BASE_TOPIC "/set"
-#define MQTT_AVAILABILITY_TOPIC STATUS_TOPIC "/LWT"
-#define MQTT_CONNECTED_STATUS "online"
-#define MQTT_DISCONNECTED_STATUS "offline"
+#define MQTT_CLIENT_ID "TestJSON"                  // Nombre del nodo
+#define BASE_TOPIC "/" MQTT_CLIENT_ID                   // Topic de base
+#define SUBSCRIBE_TOPIC BASE_TOPIC "/#"    
+#define STATUS_TOPIC BASE_TOPIC "/status"               // Topic donde se publican todos los estados
+#define SET_TOPIC BASE_TOPIC "/set"                     // Topic para recibir comandos de la Alarma
+#define OPTIONS_TOPIC BASE_TOPIC "/options"             // Topic para recibir opciones
+#define MQTT_AVAILABILITY_TOPIC STATUS_TOPIC "/LWT"     // Topic para publicar LWT
+#define MQTT_CONNECTED_STATUS "online"                  // Estados LWT
+#define MQTT_DISCONNECTED_STATUS "offline"              // Estados LWT
 
 
