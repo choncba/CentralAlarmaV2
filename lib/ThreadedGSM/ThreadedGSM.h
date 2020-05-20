@@ -15,7 +15,7 @@
 // Defaults
 #define THREADEDGSM_DEF_DTE_BUF_SIZ		512
 #define THREADEDGSM_DEF_AT_TIMEOUT		2000//5000
-#define THREADEDGSM_DEF_STA_PON			3000//10000
+#define THREADEDGSM_DEF_STA_PON			15000//10000 - Le doy un poco mas de tiempo para que despues del reset levante el SIM
 #define THREADEDGSM_DEF_STA_POF			1000
 
 // Use custom values or default ones
@@ -36,13 +36,13 @@
 
 //#define THREADEDGSM_DEBUG Serial
 
-#ifdef THREADEDGSM_DEBUG
-	#define DEBUG_PRINT(x)  THREADEDGSM_DEBUG.print (x)
-	#define DEBUG_PRINTLN(x)  THREADEDGSM_DEBUG.println (x)
-#else
-	#define DEBUG_PRINT(x)
-	#define DEBUG_PRINTLN(x)
-#endif
+// #ifdef THREADEDGSM_DEBUG
+// 	#define DEBUG_PRINT(x)  THREADEDGSM_DEBUG.print (x)
+// 	#define DEBUG_PRINTLN(x)  THREADEDGSM_DEBUG.println (x)
+// #else
+// 	#define DEBUG_PRINT(x)
+// 	#define DEBUG_PRINTLN(x)
+// #endif
 
 class ThreadedGSM
 {
@@ -314,7 +314,7 @@ private:
 			case STARTUP_ENTER_AT:
 				if(dte.getResult() ==  DTE::EXPECT_RESULT)
 				{
-					dte.SendCommand("AT+CPIN?\r", 10000, "OK\r");
+					dte.SendCommand("AT+CPIN?\r", 10000, "OK\r");	// Estaba en 10000
 					state = STARTUP_CHK_CPIN;
 				}
 				else

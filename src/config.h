@@ -37,15 +37,18 @@
 // Serial
 #define SerialDebug     Serial
 #define SerialModem     Serial1        // Modulo SIM800 conectado al Serial1 por hardware
+#define ModemBaudRate   115200
 
 #define DEBUG
 
 #ifdef DEBUG
 #define DEBUG_PRINT(x)      SerialDebug.print(x)
-#define DEBUG_PRINTLN(x)    SerialDebug.println(x) 
+#define DEBUG_PRINTLN(x)    SerialDebug.println(x)
+#define DEBUG_PRINTF(x)     SerialDebug.printf(x)   //https://github.com/MCUdude/MightyCore#printf-support
 #else
 #define DEBUG_PRINT(x)
 #define DEBUG_PRINTLN(x)
+#define DEBUG_PRINTF(x)     
 #endif
 
 // Habilitar funciones
@@ -58,8 +61,10 @@
 #define USE_RF              // Habilita/Deshabilita entradas RF
 
 /// *** Parametros de la alarma *** ///
+
 #define ALARM_INPUTS    8   // Numero de entrada de sensores
-#define RF_INPUTS       4   // Numero de entradas RF/llavero
+const uint8_t ALARM_INPUT[ALARM_INPUTS] = { IN1, IN2, IN3, IN4, IN5, IN6, IN7, IN8 };
+enum ALARM_INPUT_enum {in1 = 0, in2, in3, in4, in5, in6, in7, in8 };
 #define NUM_STATUS      5   // Estados posibles de la alarma para HA
 #define NUM_PHONES      5   // Numeros de telefono almacenados
 // Comandos enviados/recibidos con HA
@@ -71,8 +76,11 @@ const char AlarmCMD[NUM_STATUS][11] = { "DISARM", "ARM_HOME", "ARM_AWAY", "PENDI
 const char comandos[NUM_COMANDOS][12] = {"ACTIVAR","DESACTIVAR","INFO","SAVE","DELETE","LIST","PIN","ENTRADA","FACTORY", "INPUTFUN"};
 enum comandos_enum {ACTIVAR=0,DESACTIVAR,INFO,SAVE,DELETE,LIST,PIN,ENTRADA,FACTORY,INPUTFUN};
 // Modos de seteo de las entradas
-const char modes[5][20] = {"Desactivada", "ACT Total/Parcial", "ACT Total", "ACT Siempre", "ACT Demorada"};
+const char AlarmInputMode[5][20] = {"Desactivada", "ACT Total/Parcial", "ACT Total", "ACT Siempre", "ACT Demorada"};
 
+#define RF_INPUTS       4   // Numero de entradas RF/llavero
+const uint8_t RF_INPUT[RF_INPUTS] = { RFA, RFB, RFC, RFD };
+enum RF_INPUT_enum {TECLA_A = 0, TECLA_B, TECLA_C, TECLA_D };
 /////////////////////////////////////////
 
 // Parametros MQTT - La configuración de conexión al servidor se realiza desde ESP-Link
