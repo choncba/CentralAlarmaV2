@@ -6,6 +6,8 @@
 #include <ELClient.h>
 #include <ELClientMqtt.h>
 #include <ArduinoJson.h>
+#include "Timer.h"  // Ver MightyCore
+
 #ifdef USE_GSM
 #include <ThreadedGSM.h>
 ThreadedGSM SIM800(SerialModem);
@@ -14,6 +16,7 @@ ThreadedGSM SIM800(SerialModem);
 ELClient esp(&Serial);
 ELClientMqtt mqtt(&esp);
 
+#pragma region Variables Globales
 // Estructura con los estados de la alarma
 struct
 {
@@ -48,7 +51,12 @@ struct
 
 bool mqtt_update = false; // Flag para indicar cuando es necesario publicar los estados
 
+// Timers
 unsigned long timer;
+Timer t_leds, t_sensores, t_mqtt, t_gsm;
+int timerLEDS = 0;
+int id_timerAviso = 0;
+#pragma endregion
 
 #pragma region Funciones EEPROM
 void saveEEPROM(){
@@ -143,8 +151,7 @@ void mqttData(void* response) {
 // Hassio publica:  Topic: /TestJSON/set
 //                  Data: (0 , 1, 2) - DISARMED/ARMED_HOME/ARMED_AWAY
   if(topic.indexOf("/set")>0){
-    Status.AlarmStatus = data.toInt();
-    mqtt_update = true;
+    Status.AlarmNextStatus = data.toInt();
   }
 
 // Hassio publica:  Topic: /TestJSON/options
@@ -182,11 +189,7 @@ void mqttData(void* response) {
 #endif
             mqtt_update = true;
           }
-
-    //serializeJsonPretty(doc, Serial);
-
   }
-
 }
 
 void mqttPublished(void* response) {
@@ -286,9 +289,71 @@ void UpdateMQTT()
     }
     mqtt_update = false;
   }
-  
 }
 
+void mqttPublish(void *context){ mqtt_update = true; }
+
+#pragma endregion
+
+#pragma region Funciones Alarma
+void ActivarSirenas(uint8_t modo)
+{
+  digitalWrite(SIR1, modo);
+  digitalWrite(SIR2, modo);
+}
+
+void BlinkLeds(void* context)
+{
+  (void) context;
+  digitalWrite(LED,!digitalRead(LED));
+  digitalWrite(LED_EXT,!digitalRead(LED_EXT));
+}
+
+void beep()
+{
+  t_leds.pulseImmediate(SIR1,100, HIGH);  //Produce un pulso en alto de 100 mSeg y luego queda en bajo
+  t_leds.pulseImmediate(SIR2,100, HIGH);
+}
+
+void checkAlarma(){
+  if(Status.AlarmStatus != Status.AlarmNextStatus)
+  {
+    switch(Status.AlarmNextStatus)
+    {
+      case DISARMED:    t_leds.stop(timerLEDS);
+                        digitalWrite(LED, LOW);
+                        digitalWrite(LED_EXT, LOW);
+                        ActivarSirenas(LOW);
+                        if(Status.AlarmStatus == ARMED_AWAY)
+                        {
+                          beep(); // Suenan las sirenas durante 100 mSeg
+                        }
+#ifdef USE_GSM          
+                        id_timerAviso = 0;
+                        t_gsm.stop(id_timerAviso);
+#endif
+                        break;
+      case ARMED_HOME:  t_leds.stop(timerLEDS);
+                        timerLEDS = t_leds.every(1000, BlinkLeds, (void*)0); // Parpadean los leds cada 1 segundo
+                        break;
+      case ARMED_AWAY:  t_leds.stop(timerLEDS);
+                        timerLEDS = t_leds.every(1000, BlinkLeds, (void*)0); // Parpadean los leds cada 1 segundo
+                        beep(); // Suenan las sirenas durante 100 mSeg
+                        break;
+      case PENDING:     break;
+      case TRIGGERED:   ActivarSirenas(HIGH);
+                        t_leds.stop(timerLEDS);
+                        timerLEDS = t_leds.every(100, BlinkLeds, (void*)0); // Parpadean los leds cada 100 mSseg
+#ifdef USE_GSM
+                        AvisoSMS();
+#endif
+                        break;
+      default:          break;      
+    }
+    Status.AlarmStatus = Status.AlarmNextStatus;
+    mqtt_update = true;
+  }
+}
 #pragma endregion
 
 #pragma region Lectura de entradas y Sensores
@@ -331,7 +396,6 @@ void AlarmInputsCheck(){
     }
   }
 }
-
 #ifdef USE_RF
 void RfInputsCheck(){
   static uint8_t RoundCheck[RF_INPUTS] = { 0,0,0,0 };
@@ -372,11 +436,11 @@ void RfInputsCheck(){
     }
   }
 }
-#pragma endregion
 #endif
+#pragma endregion
 
-#ifdef USE_GSM
 #pragma region Funciones GSM
+#ifdef USE_GSM
 // Interpreta los comandos enviados por SMS
 void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
 {
@@ -517,7 +581,8 @@ void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
 }
 
 // Envia avisos por SMS a los numeros registrados
-void AvisoSMS(){
+void AvisoSMS()
+{
   String Number;
   String Message = "Alarma Disparada!, motivo: " + String(Options.inputs_names[Status.TriggerCause]);
   for(uint8_t i = 0; i<NUM_PHONES; i++){
@@ -547,9 +612,8 @@ void power(ThreadedGSM& modem, bool mode){
 void signal(ThreadedGSM& modem, ThreadedGSM::SignalLevel& Signal){
   Status.GsmSignal = Signal.Dbm;
 }
-
-#pragma endregion
 #endif
+#pragma endregion
 
 #pragma region SETUP
 void setup() {
@@ -558,7 +622,6 @@ void setup() {
   pinMode(SIR1, OUTPUT);
   pinMode(SIR2, OUTPUT);
   pinMode(LED_EXT, OUTPUT);
-
   // Seteo pines de las entradas de la alarma y llavero RF
   for(uint8_t i=0;i<ALARM_INPUTS;i++){
     pinMode(ALARM_INPUT[i], INPUT_PULLUP);
@@ -621,24 +684,28 @@ void setup() {
   mqtt_update = true;
   
   timer = millis();
-  
+#ifdef USE_RANDOM_SENSORS  
   randomSeed(analogRead(0));
+#endif
+
+  t_mqtt.every(diezMinutos, mqttPublish, (void*)0); // Publica todo cada 10 minutos
 }
 #pragma endregion
 
 void loop(){
   esp.Process();
-
 #ifdef USE_GSM
-  SIM800.loop();
+  SIM800.loop();      // Procesa los SMS entrantes/salientes
 #endif
-  
-  AlarmInputsCheck();
-
+  AlarmInputsCheck(); // Verifica las entradas de la alarma
 #ifdef USE_RF
-  RfInputsCheck();
+  RfInputsCheck();    // Verifica las entradas de los llaveros RF
 #endif  
-  
+  checkAlarma();      // Verifica los estados de la alarma
+  t_leds.update();    // Update del estado de los leds
+  t_mqtt.update();    // Update del estado del timer MQTT
+
+#ifdef USE_RANDOM_SENSORS
   // Genero valores aleatorios para los sensores y los publico
   if(millis()- timer > 30000){
     Status.Vac ^=1;
@@ -656,9 +723,12 @@ void loop(){
     Status.energy = (float)random(100000)/10;
     timer = millis();
     mqtt_update = true;
-  }    
+  }
+#endif    
 
-  UpdateMQTT();
+  UpdateMQTT();       // Publica los datos MQTT de ser necesario
+
+
 }
 
 

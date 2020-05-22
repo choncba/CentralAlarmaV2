@@ -54,11 +54,21 @@
 // Habilitar funciones
 #define USE_EEPROM          // Almacena datos de configuracion en memoria
 #define USE_GSM             // Modulo GSM SIM800L
+//#define USE_RANDOM_SENSORS  // Genera valores aleatorios para los sensores y los publica cada 30 seg.
+#ifndef USE_RANDOM_SENSORS
 #define USE_SENSOR_DHT22    // Habilita/Deshabilita DHT22
 #define USE_SENSOR_18B20    // Habilita/Deshabilita 18B20 
 #define USE_SENSOR_LCR      // Habilita/Deshabilita LCR
 #define USE_SENSOR_POWER    // Habilita/Deshabilita medidor de potencia
 #define USE_RF              // Habilita/Deshabilita entradas RF
+#endif
+
+// Constantes de Timers
+const unsigned long unSegundo = 1000L;  // 1000 mSeg
+const unsigned long treintaSegundos = 30 * unSegundo; // 30000 ms / 30 seg
+const unsigned long unMinuto = 60 * unSegundo; // 60000 ms / 1 min
+const unsigned long diezMinutos = 10 * unMinuto; // 600000 ms/10 min
+const unsigned long treintaMinutos = 30 * unMinuto; // 600000 ms/10 min
 
 /// *** Parametros de la alarma *** ///
 
