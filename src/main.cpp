@@ -408,12 +408,13 @@ void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
           SMS_out += " - ";
           for (int i = 0; i < ALARM_INPUTS; i++)
           {
-            if(Options.inputs_function[i] != 0){  // No envia info de entradas desactivadas
-              SMS_out += String(Options.inputs_names[i]) + "/" + (Status.Entrada[i])?"OPEN":"CLOSED";
-              SMS_out += ", ";
-            }
+            SMS_out += (String)Options.inputs_names[i];
+            SMS_out += "/"; 
+            SMS_out += (Status.Entrada[i])?"OPEN":"CLOSED";
+            if(i<ALARM_INPUTS-1)  SMS_out += ", ";
           }
-          SMS_out += " - VAC " + (!Status.Vac) ? "OK" : "ERROR";
+          SMS_out += " - VAC ";
+          SMS_out += (!Status.Vac) ? "OK" : "ERROR";
           break;
 					case SAVE:						// Guardo el número en la lista de receptores de avisos - SMS: PIN SAVE NUMERO
 					indexEnd = Message.length();
