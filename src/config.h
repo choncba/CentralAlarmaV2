@@ -86,7 +86,8 @@ const char AlarmCMD[NUM_STATUS][11] = { "DISARM", "ARM_HOME", "ARM_AWAY", "PENDI
 const char comandos[NUM_COMANDOS][12] = {"ACTIVAR","DESACTIVAR","INFO","SAVE","DELETE","LIST","PIN","ENTRADA","FACTORY", "INPUTFUN"};
 enum comandos_enum {ACTIVAR=0,DESACTIVAR,INFO,SAVE,DELETE,LIST,PIN,ENTRADA,FACTORY,INPUTFUN};
 // Modos de seteo de las entradas
-const char AlarmInputMode[5][20] = {"Desactivada", "ACT Total/Parcial", "ACT Total", "ACT Siempre", "ACT Demorada"};
+#define INPUT_MODES 5
+enum AlarmInputMode {DESACTIVADA=0, DISP_TOT_PARCIAL, DISP_TOTAL, DISP_SIEMPRE, DISP_DEMORADO};
 
 #define RF_INPUTS       4   // Numero de entradas RF/llavero
 const uint8_t RF_INPUT[RF_INPUTS] = { RFA, RFB, RFC, RFD };

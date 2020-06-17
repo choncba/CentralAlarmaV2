@@ -44,7 +44,7 @@ struct
 {
 	char data_set;
 	char inputs_names[ALARM_INPUTS][20] = { "","","","","","","","" };	    // Nombres de las entradas
-    uint8_t inputs_function[ALARM_INPUTS] = { 1, 1, 1, 1, 1, 1, 1, 1 };   // Funciones de las entradas
+  uint8_t inputs_function[ALARM_INPUTS] = { 1, 1, 1, 1, 1, 1, 1, 1 };   // Funciones de las entradas
 	char PIN[5] = "1234";						                                        // clave PIN
 	char reg_numbers[NUM_PHONES][15] = { "", "", "", "", "" };	            // Números de teléfono de la agenda
 }Options;
@@ -52,10 +52,15 @@ struct
 bool mqtt_update = false; // Flag para indicar cuando es necesario publicar los estados
 
 // Timers
+#ifdef USE_RANDOM_SENSORS
 unsigned long timer;
+#endif
 Timer t_leds, t_sensores, t_mqtt, t_gsm;
 int timerLEDS = 0;
 int id_timerAviso = 0;
+
+//Flags
+bool EnviarAvisoSMS = false;
 #pragma endregion
 
 #pragma region Funciones EEPROM
@@ -73,6 +78,7 @@ void defaultEEPROM(){
   Options.data_set = 'T';
   for(i = 0; i < ALARM_INPUTS; i++){
     sprintf(&Options.inputs_names[i][0], "IN%d", i+1);
+    Options.inputs_function[i] = DESACTIVADA;
   }
   aux = "1234";
   aux.toCharArray(Options.PIN, sizeof(Options.PIN));
@@ -152,6 +158,7 @@ void mqttData(void* response) {
 //                  Data: (0 , 1, 2) - DISARMED/ARMED_HOME/ARMED_AWAY
   if(topic.indexOf("/set")>0){
     Status.AlarmNextStatus = data.toInt();
+    mqtt_update = true;
   }
 
 // Hassio publica:  Topic: /TestJSON/options
@@ -231,12 +238,14 @@ void mqttPublished(void* response) {
   "rf":[0,0,0,0]
   }
 ***/
+// Publica todas las variables en un unico JSON
 void UpdateMQTT()
 {
   if(mqtt_update) // Seteo este flag global en cualquier parte y actualizo en loop
   {
     if(connected){
       const size_t capacity = JSON_ARRAY_SIZE(4) + JSON_ARRAY_SIZE(5) + 3*JSON_ARRAY_SIZE(8) + JSON_OBJECT_SIZE(3) + JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(6) + JSON_OBJECT_SIZE(10) + 520;
+
       DynamicJsonDocument doc(capacity);
 
       doc["status"] = 1;
@@ -291,7 +300,10 @@ void UpdateMQTT()
   }
 }
 
-void mqttPublish(void *context){ mqtt_update = true; }
+void mqttPublish(void *context){ 
+  (void)context;
+  mqtt_update = true; 
+}
 
 #pragma endregion
 
@@ -345,13 +357,13 @@ void checkAlarma(){
                         t_leds.stop(timerLEDS);
                         timerLEDS = t_leds.every(100, BlinkLeds, (void*)0); // Parpadean los leds cada 100 mSseg
 #ifdef USE_GSM
-                        AvisoSMS();
+                        EnviarAvisoSMS = true;
 #endif
                         break;
       default:          break;      
     }
     Status.AlarmStatus = Status.AlarmNextStatus;
-    mqtt_update = true;
+    mqttPublish((void*)0);
   }
 }
 #pragma endregion
@@ -378,21 +390,33 @@ void AlarmInputsCheck(){
       {
         Status.Entrada[cnt] = curStatus;
         RoundCheck[cnt] = 0;
-        if(Status.AlarmStatus == ARMED_HOME) // Verifico si la alarma está activada en casa
-        {
-          if(cnt < 6) // Reservo las entradas 7 y 8 para sensores dentro de la casa cuando estoy en ARMED_HOME
-          {
-            Status.AlarmNextStatus = TRIGGERED;  // Disparo la alarma con entradas 1 a 6
-            Status.TriggerCause = cnt;           // Guardo que entrada causo el disparo
-          }
+        // Verifico primero la configuracion de la entrada
+        switch(Options.inputs_function[cnt]){
+          case DESACTIVADA: break;  // Desactivada, no dispara la alarma
+          case DISP_TOT_PARCIAL:    // Dispara en armado total o parcial (Perimetrales)
+                            if(Status.AlarmStatus == ARMED_HOME || Status.AlarmStatus == ARMED_AWAY){ // Alarma armada en casa o fuera, dispara
+                              Status.AlarmNextStatus = TRIGGERED;    // Disparo la alarma
+                              Status.TriggerCause = cnt;             // Guardo que entrada causo el disparo
+                            }
+                            break;
+          case DISP_TOTAL:          // Dispara solo en armado total (Sensores internos)
+                            if(Status.AlarmStatus == ARMED_AWAY){    // Alarma armada fuera de casa, dispara
+                              Status.AlarmNextStatus = TRIGGERED;    // Disparo la alarma
+                              Status.TriggerCause = cnt;             // Guardo que entrada causo el disparo
+                            }
+                            break;
+          case DISP_SIEMPRE:        // Dispara SIEMPRE y mientras esté abierta (Tamper campana) 
+                            if(Status.Entrada[cnt]){                 // Si esta abierta, aun con la alarma desactivada dispara
+                              Status.AlarmNextStatus = TRIGGERED;    // Disparo la alarma
+                              Status.TriggerCause = cnt;             // Guardo que entrada causo el disparo
+                            }
+                            break;
+          case DISP_DEMORADO:       // Dispara luego de un minuto de activada
+                            break;
+          default: break;
         }
-        if(Status.AlarmStatus == ARMED_AWAY)
-        {
-          Status.AlarmNextStatus = TRIGGERED;    // Disparo la alarma
-          Status.TriggerCause = cnt;             // Guardo que entrada causo el disparo
-        }
-        mqtt_update = true;                       // Activo el flag para publicar el cambio
       }
+      mqtt_update = true;                       // Activo el flag para publicar el cambio
     }
   }
 }
@@ -581,36 +605,64 @@ void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
 }
 
 // Envia avisos por SMS a los numeros registrados
-void AvisoSMS()
+bool AvisoSMS()
 {
-  String Number;
+  bool send_complete = false;
+  static uint8_t send_index = 0;
+  String Number = String(Options.reg_numbers[send_index]);
   String Message = "Alarma Disparada!, motivo: " + String(Options.inputs_names[Status.TriggerCause]);
-  for(uint8_t i = 0; i<NUM_PHONES; i++){
-    Number = String(Options.reg_numbers[i]);
-    if(!Number.startsWith("0")){
+  if(!Number.startsWith("0")){ 
+    if(SIM800.getBusy() == 0){  // Verifico si está libre para enviar
       SIM800.sendSMS(Number, Message);
       DEBUG_PRINT("Mensaje: ");
       DEBUG_PRINT(Message);
       DEBUG_PRINT(" - Enviado a ");
       DEBUG_PRINTLN(Number);
+      if(send_index < NUM_PHONES){
+        send_index++;
+      }
+      else{
+        send_index = 0;
+        send_complete = true;
+      } 
     }
   }
+  else{
+    if(send_index < NUM_PHONES){
+      send_index++;
+    }
+    else{
+      send_index = 0;
+      send_complete = true;
+    } 
+  }
+
+  return send_complete;
 }
 
+// Callback cuando se inicializa el modulo
 void startup(ThreadedGSM& modem)
 {
-	DEBUG_PRINT("Ready. ");
-	DEBUG_PRINT(millis() - timer);
-	DEBUG_PRINTLN("mSeg");
+	DEBUG_PRINTLN("SIM800 Ready");
+  Status.GsmStatus = true;
 }
 
+// Callback para reiniciar el SIM800
 void power(ThreadedGSM& modem, bool mode){
   digitalWrite(SIM_RES,mode);
-  Status.GsmStatus = mode;
+  DEBUG_PRINT("SIM800 Power ");
+  DEBUG_PRINTLN((mode)?"ON":"OFF");
+  Status.GsmStatus = false;  
 }
 
+// Ver https://m2msupport.net/m2msupport/atcsq-signal-quality/
 void signal(ThreadedGSM& modem, ThreadedGSM::SignalLevel& Signal){
-  Status.GsmSignal = Signal.Dbm;
+  Status.GsmSignal = map(Signal.Value,0,30,0,100);
+  DEBUG_PRINT("SIM800 Signal: ");
+  DEBUG_PRINT(Signal.Value);
+  DEBUG_PRINT("%, ");
+  DEBUG_PRINT(Signal.Dbm);
+  DEBUG_PRINTLN(" dBm");
 }
 #endif
 #pragma endregion
@@ -637,12 +689,11 @@ void setup() {
 #ifdef USE_GSM
   SerialModem.begin(ModemBaudRate);
 
-  timer = millis();
   SIM800.begin();
 
 	//SIM800.setInterval(ThreadedGSM::INTERVAL_CLOCK, 60000);
-	//SIM800.setInterval(ThreadedGSM::INTERVAL_SIGNAL, 60000);
-	SIM800.setInterval(ThreadedGSM::INTERVAL_INBOX, 2000);
+	SIM800.setInterval(ThreadedGSM::INTERVAL_SIGNAL, treintaMinutos);
+	SIM800.setInterval(ThreadedGSM::INTERVAL_INBOX, 2*unSegundo);
 	SIM800.setHandlers({
 		//.signal = signal,
 		.signal = signal,
@@ -683,8 +734,9 @@ void setup() {
 
   mqtt_update = true;
   
-  timer = millis();
+  
 #ifdef USE_RANDOM_SENSORS  
+  timer = millis();
   randomSeed(analogRead(0));
 #endif
 
@@ -725,6 +777,8 @@ void loop(){
     mqtt_update = true;
   }
 #endif    
+
+  if(EnviarAvisoSMS) EnviarAvisoSMS = !AvisoSMS();
 
   UpdateMQTT();       // Publica los datos MQTT de ser necesario
 

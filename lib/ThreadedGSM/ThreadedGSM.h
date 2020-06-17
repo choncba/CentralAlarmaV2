@@ -3,6 +3,7 @@
 *
 * Created: 20/09/2016 11:14:02
 * Author: Neta Yahav
+* Modified: 10/05/2020 By ChoN
 */
 
 
@@ -34,15 +35,15 @@
 
 #define THREADEDGSM_INTERVAL_COUNT		3
 
-//#define THREADEDGSM_DEBUG Serial
+//#define THREADEDGSM_DEBUG
 
-// #ifdef THREADEDGSM_DEBUG
-// 	#define DEBUG_PRINT(x)  THREADEDGSM_DEBUG.print (x)
-// 	#define DEBUG_PRINTLN(x)  THREADEDGSM_DEBUG.println (x)
-// #else
-// 	#define DEBUG_PRINT(x)
-// 	#define DEBUG_PRINTLN(x)
-// #endif
+#ifdef THREADEDGSM_DEBUG
+	#define DEBUG_GSM_PRINT(x)  	DEBUG_PRINT(x)
+	#define DEBUG_GSM_PRINTLN(x)  	DEBUG_PRINTLN(x)
+#else
+	#define DEBUG_GSM_PRINT(x)
+	#define DEBUG_GSM_PRINTLN(x)
+#endif
 
 class ThreadedGSM
 {
@@ -246,8 +247,8 @@ public:
 			if(job)
 			{
 				state = 0;
-				DEBUG_PRINT("Job ID: ");
-				DEBUG_PRINTLN(job);
+				DEBUG_GSM_PRINT("Job ID: ");
+				DEBUG_GSM_PRINTLN(job);
 			}
 		}
 
@@ -276,6 +277,11 @@ public:
 	// Get Number
 	void getNumber(String& Number){
 
+	}
+
+	// If return any different from 0, there is a job pending
+	int getBusy(){
+		return job;
 	}
 
 protected:
@@ -372,8 +378,8 @@ private:
 		}
 		if(state != lastState)
 		{
-				DEBUG_PRINT(F("STARTUP_STATE: "));
-				DEBUG_PRINTLN(state);
+				DEBUG_GSM_PRINT(F("STARTUP_STATE: "));
+				DEBUG_GSM_PRINTLN(state);
 		}
 	}
 
@@ -423,8 +429,8 @@ private:
 		}
 		if(state != lastState)
 		{
-				DEBUG_PRINT(F("CLOCK_STATE: "));
-				DEBUG_PRINTLN(state);
+				DEBUG_GSM_PRINT(F("CLOCK_STATE: "));
+				DEBUG_GSM_PRINTLN(state);
 		}
 	}
 	void Signal()
@@ -456,8 +462,8 @@ private:
 		}
 		if(state != lastState)
 		{
-				DEBUG_PRINT(F("SIGNAL_STATE: "));
-				DEBUG_PRINTLN(state);
+				DEBUG_GSM_PRINT(F("SIGNAL_STATE: "));
+				DEBUG_GSM_PRINTLN(state);
 		}
 	}
 	void clearReq(int req)
@@ -523,7 +529,7 @@ private:
 			case READ_CHK_CMGR:
 				if(dte.getResult() == DTE::EXPECT_RESULT)
 				{
-					// DEBUG_PRINTLN(dte.getBuffer());
+					// DEBUG_GSM_PRINTLN(dte.getBuffer());
 					// AT+CMGR=1
 					// +CMGR: "REC READ","+543516510632","Luciano","20/02/05,10:53:09-12"
 					// Hola
@@ -537,19 +543,19 @@ private:
 						// int secondComa = dte.getBuffer().indexOf("\",\"", indexStartNumber);
 						// int indexEndNumber = secondComa;
 						// String Number = dte.getBuffer().substring(indexStartNumber, indexEndNumber);
-						// DEBUG_PRINT("Number: ");
-						// DEBUG_PRINTLN(Number);
+						// DEBUG_GSM_PRINT("Number: ");
+						// DEBUG_GSM_PRINTLN(Number);
 						// int indexStartFrom = secondComa + 3;
 						// int thirdComa = dte.getBuffer().indexOf("\",\"", indexStartFrom);
 						// int indexEndFrom = thirdComa;
 						// String From = dte.getBuffer().substring(indexStartFrom, indexEndFrom);
-						// DEBUG_PRINT("From: ");
-						// DEBUG_PRINTLN(From);
+						// DEBUG_GSM_PRINT("From: ");
+						// DEBUG_GSM_PRINTLN(From);
 						// int indexStartDate = thirdComa + 3;
 						// int indexEndDate = dte.getBuffer().indexOf("\"", indexStartDate);
 						// String Date = dte.getBuffer().substring(indexStartDate, indexEndDate);
-						// DEBUG_PRINT("Date: ");
-						// DEBUG_PRINTLN(Date);
+						// DEBUG_GSM_PRINT("Date: ");
+						// DEBUG_GSM_PRINTLN(Date);
 
 						int indexStartNumber = dte.getBuffer().indexOf("\",\"", indexStart);
 						if(indexStartNumber >= 0){
@@ -589,8 +595,8 @@ private:
 		}
 		if(state != lastState)
 		{
-				DEBUG_PRINT(F("INBOX_STATE: "));
-				DEBUG_PRINTLN(state);
+				DEBUG_GSM_PRINT(F("INBOX_STATE: "));
+				DEBUG_GSM_PRINTLN(state);
 		}
 	}
 
@@ -634,8 +640,8 @@ private:
 		}
 		if(state != lastState)
 		{
-				DEBUG_PRINT(F("OUTBOX_STATE: "));
-				DEBUG_PRINTLN(state);
+				DEBUG_GSM_PRINT(F("OUTBOX_STATE: "));
+				DEBUG_GSM_PRINTLN(state);
 		}
 	}
 
