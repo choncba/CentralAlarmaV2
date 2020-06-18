@@ -7,11 +7,37 @@
 #include <ELClientMqtt.h>
 #include <ArduinoJson.h>
 #include "Timer.h"  // Ver MightyCore
+#include <Wire.h>
+
+#pragma region Definicion de modulos adicionales
 
 #ifdef USE_GSM
 #include <ThreadedGSM.h>
 ThreadedGSM SIM800(SerialModem);
 #endif
+
+#ifdef USE_SENSOR_DHT22
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <DHT_U.h>
+#define DHTTYPE DHT22
+DHT_Unified dht(DHT_PIN, DHTTYPE);
+#endif
+
+#ifdef USE_SENSOR_18B20
+#include <OneWire.h>
+#include <DallasTemperature.h>
+OneWire oneWire(OW_PIN);
+DallasTemperature sensors(&oneWire);
+#endif
+
+#ifdef USE_SENSOR_POWER
+#include <PZEM004T.h>         // Libreria de manejo del modulo medidor de potencia, usa softwareserial
+PZEM004T pzem(pwrRX, pwrTX);  // (RX,TX) connect to TX,RX of PZEM
+IPAddress ip(192,168,1,1);
+#endif
+
+#pragma endregion
 
 ELClient esp(&Serial);
 ELClientMqtt mqtt(&esp);
@@ -369,6 +395,7 @@ void checkAlarma(){
 #pragma endregion
 
 #pragma region Lectura de entradas y Sensores
+// Lectura de entradas de la Alarma
 void AlarmInputsCheck(){
   static uint8_t RoundCheck[ALARM_INPUTS] = { 0,0,0,0,0,0,0,0 };
   const uint8_t RoundCheckThreshole = 8;
@@ -420,7 +447,9 @@ void AlarmInputsCheck(){
     }
   }
 }
+
 #ifdef USE_RF
+// Lectura de las entradas RF y acciones sobre la alarma predefinidas
 void RfInputsCheck(){
   static uint8_t RoundCheck[RF_INPUTS] = { 0,0,0,0 };
   const uint8_t RoundCheckThreshole = 8;
@@ -461,6 +490,53 @@ void RfInputsCheck(){
   }
 }
 #endif
+
+// Lectura de Sensores
+#ifndef USE_RANDOM_SENSORS
+void LeerSensores(void* context)
+{
+  (void)context;
+#ifdef USE_SENSOR_DHT22  
+  sensors_event_t event;
+  dht.temperature().getEvent(&event);
+  if(!isnan(event.temperature)) Status.OutsideTemp = event.temperature;
+
+  dht.humidity().getEvent(&event);
+  if(!isnan(event.relative_humidity)) Status.OutsideHum = event.relative_humidity;
+#endif
+
+#ifdef USE_SENSOR_18B20
+  sensors.requestTemperatures();
+  float int_temp = sensors.getTempCByIndex(0);
+  if(!isnan(int_temp))  Status.InsideTemp = int_temp;
+#endif
+
+#ifdef USE_SENSOR_LCR
+  Status.LumExt = 0;
+  int lectura_lcr = analogRead(LCR);
+  Status.LumExt = map(lectura_lcr, 0, 1023, 100, 0);
+#endif
+
+  int lectura_vbat = analogRead(VBAT);
+  Status.Vbat = lectura_vbat * 0.01967;  // Vbat = Vad.(R1+R2)/R2; Vad=Lectura.5/1024 => Vbat = Lectura.(R1+R2)/R2).(5/1024)
+  Status.Vac = digitalRead(VAC);
+
+#ifdef USE_SENSOR_POWER
+  float v_med = pzem.voltage(ip);
+  if (v_med > 0.0) Status.voltage = v_med;
+
+  float i_med = pzem.current(ip);
+  if(i_med >= 0.0) Status.current = i_med;
+  
+  float p_med = pzem.power(ip);
+  if(p_med >= 0.0) Status.power = p_med;
+  
+  float e_med = pzem.energy(ip);
+  if(e_med >= 0.0) Status.energy = e_med;
+#endif
+}
+#endif
+
 #pragma endregion
 
 #pragma region Funciones GSM
@@ -732,15 +808,29 @@ void setup() {
   if(Options.data_set != 'T') defaultEEPROM();  // Si es la primera vez que se inicia y la memoria está en blanco, cargo datos por default
 #endif
 
-  mqtt_update = true;
-  
-  
 #ifdef USE_RANDOM_SENSORS  
   timer = millis();
   randomSeed(analogRead(0));
+#else
+#ifdef USE_SENSOR_POWER
+  pzem.setAddress(ip);
+  DEBUG_PRINTLN(F("PZEM004T Power Meter Started"));
+#endif
+#ifdef USE_SENSOR_DHT22
+  dht.begin();
+DEBUG_PRINTLN(F("DHT22 Temperature/Humidity Sensor Started"));
+#endif
+#ifdef USE_SENSOR_18B20
+  sensors.begin();
+  DEBUG_PRINTLN(F("DS18B20 Temperature sensor Started"));
+#endif
+  t_sensores.every(unMinuto, LeerSensores, (void*)0);        // Lee la informacion de sonsores cada 1 minuto
+  LeerSensores((void*)0); // Leo los sensores al iniciar
 #endif
 
   t_mqtt.every(diezMinutos, mqttPublish, (void*)0); // Publica todo cada 10 minutos
+
+  mqttPublish((void*)0);  // Publico todo al iniciar
 }
 #pragma endregion
 

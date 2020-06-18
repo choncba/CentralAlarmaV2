@@ -51,6 +51,16 @@
 #define DEBUG_PRINTF(x)     
 #endif
 
+// #ifdef DEBUG
+// #define DEBUG_PRINT(...)    {SerialDebug.print(__VA_ARGS__);}      
+// #define DEBUG_PRINTLN(...)  {SerialDebug.println(__VA_ARGS__);}
+// #define DEBUG_PRINTF(...)   {SerialDebug.printf(__VA_ARGS__);}   //https://github.com/MCUdude/MightyCore#printf-support
+// #else
+// #define DEBUG_PRINT(...){}
+// #define DEBUG_PRINTLN(...){}
+// #define DEBUG_PRINTF(...){}     
+// #endif
+
 // Habilitar funciones
 #define USE_EEPROM          // Almacena datos de configuracion en memoria
 #define USE_GSM             // Modulo GSM SIM800L
