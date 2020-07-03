@@ -844,6 +844,7 @@ void loop(){
   RfInputsCheck();    // Verifica las entradas de los llaveros RF
 #endif  
   checkAlarma();      // Verifica los estados de la alarma
+  t_sensores.update();// Update de los sensores
   t_leds.update();    // Update del estado de los leds
   t_mqtt.update();    // Update del estado del timer MQTT
 
@@ -864,15 +865,13 @@ void loop(){
     Status.power = (float)random(1000000)/100;
     Status.energy = (float)random(100000)/10;
     timer = millis();
-    mqtt_update = true;
   }
 #endif    
 
-  if(EnviarAvisoSMS) EnviarAvisoSMS = !AvisoSMS();
+  if(EnviarAvisoSMS) EnviarAvisoSMS = !AvisoSMS();  // Envia el aviso por SMS en caso de disparo de la alarma
+                                                    // el flag EnviarAvisoSMS pasa a false cuando termina con todos los n° de la agenda
 
   UpdateMQTT();       // Publica los datos MQTT de ser necesario
-
-
 }
 
 
