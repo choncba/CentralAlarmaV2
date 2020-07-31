@@ -584,7 +584,7 @@ void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
 					indexEnd = Message.length();
 					newNumber = Message.substring(indexStart, indexEnd);
 					for(index = 0; index < NUM_PHONES; index++){
-						if(String(Options.reg_numbers[index]) == ""){
+						if(String(Options.reg_numbers[index]) == "" || String(Options.reg_numbers[index]).startsWith("0")){
 							newNumber.toCharArray(&Options.reg_numbers[index][0], sizeof(Options.reg_numbers[index]));	
 							saveEEPROM();	// Guardo en memoria
 							SMS_out = newNumber + " Guardado";
