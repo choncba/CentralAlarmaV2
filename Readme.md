@@ -15,7 +15,7 @@
 ### Main Board Firmware
 * ATMEGA1284P uses [Mighty Core](https://github.com/MCUdude/MightyCore)
 * [ELClient](https://github.com/jeelabs/el-client/tree/master/ELClient) - SLIP & MQTT communication to [ESP-Link](https://github.com/jeelabs/esp-link)
-* ThreadedGSM - modified version
+* ThreadedGSM - [modified version](https://github.com/choncba/ArduinoThreadedGSM)
 * Adafruit Unified Sensor
 * DHT sensor library
 * OneWire
