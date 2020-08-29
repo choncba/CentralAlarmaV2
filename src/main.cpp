@@ -442,8 +442,8 @@ void AlarmInputsCheck(){
                             break;
           default: break;
         }
+        mqttPublish((void*)0);                       // Activo el flag para publicar el cambio
       }
-      mqtt_update = true;                       // Activo el flag para publicar el cambio
     }
   }
 }
