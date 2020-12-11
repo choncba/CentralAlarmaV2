@@ -378,6 +378,7 @@ void checkAlarma(){
 #ifdef USE_GSM          
                         id_timerAviso = 0;
                         t_gsm.stop(id_timerAviso);
+                        EnviarAvisoSMS = true;
 #endif
                         break;
       case ARMED_HOME:  t_leds.stop(timerLEDS);
@@ -386,6 +387,9 @@ void checkAlarma(){
       case ARMED_AWAY:  t_leds.stop(timerLEDS);
                         timerLEDS = t_leds.every(1000, BlinkLeds, (void*)0); // Parpadean los leds cada 1 segundo
                         beep(); // Suenan las sirenas durante 100 mSeg
+#ifdef USE_GSM
+                        EnviarAvisoSMS = true;
+#endif
                         break;
       case PENDING:     break;
       case TRIGGERED:   ActivarSirenas(HIGH);
@@ -528,6 +532,9 @@ void LeerSensores(void* context)
 
   int lectura_vbat = analogRead(VBAT);
   Status.Vbat = lectura_vbat * 0.01967;  // Vbat = Vad.(R1+R2)/R2; Vad=Lectura.5/1024 => Vbat = Lectura.(R1+R2)/R2).(5/1024)
+  if(Status.Vac!=digitalRead(VAC)){
+    EnviarAvisoSMS = true;
+  }
   Status.Vac = digitalRead(VAC);
 
 #ifdef USE_SENSOR_POWER
@@ -550,6 +557,16 @@ void LeerSensores(void* context)
 
 #pragma region Funciones GSM
 #ifdef USE_GSM
+// Verifica la validez de un numero telefonico movil
+bool check_number(String& Number){
+  bool response = false;
+
+  if(!Number.startsWith("0") && !Number.length()<7 && Number != ""){
+    response = true;
+  }
+  return response;
+}
+
 // Interpreta los comandos enviados por SMS
 void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
 {
@@ -596,9 +613,15 @@ void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
 					newNumber = Message.substring(indexStart, indexEnd);
 					for(index = 0; index < NUM_PHONES; index++){
 						if(String(Options.reg_numbers[index]) == "" || String(Options.reg_numbers[index]).startsWith("0")){
-							newNumber.toCharArray(&Options.reg_numbers[index][0], sizeof(Options.reg_numbers[index]));	
-							saveEEPROM();	// Guardo en memoria
-							SMS_out = newNumber + " Guardado";
+              if(check_number(newNumber)){
+                newNumber.toCharArray(&Options.reg_numbers[index][0], sizeof(Options.reg_numbers[index]));	
+							  saveEEPROM();	// Guardo en memoria
+                Options.active_numbers[index] = true;
+							  SMS_out = newNumber + " Guardado";
+              }
+              else{
+                SMS_out = newNumber + " NO valido";
+              }
 							break;
 						} 
 					}
@@ -623,6 +646,7 @@ void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
 								aux.toCharArray(&Options.reg_numbers[index][0], sizeof(Options.reg_numbers[index])); 	// Lo borro
 								saveEEPROM();
 								index = NUM_PHONES;
+                Options.active_numbers[index] = false;
 								SMS_out = newNumber + " Borrado";
 								break;
 							}
@@ -636,7 +660,9 @@ void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
 					readEEPROM();
 					SMS_out = "Numeros registrados: ";
 					for(index = 0; index < NUM_PHONES; index++){
-						SMS_out += String(index + 1) + " " + String(Options.reg_numbers[index]);
+            if(Options.active_numbers[index] == 1){
+              SMS_out += String(index + 1) + " " + String(Options.reg_numbers[index]);
+            }
 						if(index <(NUM_PHONES-1)) SMS_out += ", ";	
 					}
 					break;
@@ -704,7 +730,24 @@ bool AvisoSMS()
   bool send_complete = false;
   static uint8_t send_index = 0;
   String Number = String(Options.reg_numbers[send_index]);
-  String Message = "Alarma Disparada!, motivo: " + String(Options.inputs_names[Status.TriggerCause]);
+  String Message = "";
+  switch (Status.AlarmStatus)
+  {
+  case TRIGGERED: Message = "Alarma Disparada!, motivo: " + String(Options.inputs_names[Status.TriggerCause]);
+                  break;
+  case ARMED_AWAY: Message = "Alarma Activada";
+                  break;
+  case DISARMED:  Message = "Alarma Desactivada";
+                  break;                                     
+  default:  if(!Status.Vac){
+              Message = "Corte de Energia, bateria " + String(Status.Vbat) + "V";
+            }
+            else{
+              Message = "Energia Reestablecida";
+            }
+            break;
+  }
+  
   if(!Number.startsWith("0") && Options.active_numbers[send_index]){ // Verifico que el número sea válido y esté habilitado
     if(SIM800.getBusy() == 0){  // Verifico si está libre para enviar
       SIM800.sendSMS(Number, Message);
