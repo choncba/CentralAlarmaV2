@@ -284,6 +284,11 @@ public:
 		return job;
 	}
 
+	void EraseSMS(){	// Borra TODOS los mensajes
+		String CMD;
+		dte.SendCommand(CMD.c_str(), THREADEDGSM_AT_TIMEOUT, "OK\r");
+	}
+
 protected:
 private:
 
@@ -575,6 +580,9 @@ private:
 								SMS.InboxMsgContents = dte.getBuffer().substring(indexStartTEXT, indexEndTEXT);
 						}
 					}
+					// Borra TODOS los mensajes
+					// CMD = "AT+CMGD=,4";	
+					// CMD += "\r";
 					// Borra el mensaje una vez leído
 					CMD = "AT+CMGD=";
 					CMD += Message.Index;

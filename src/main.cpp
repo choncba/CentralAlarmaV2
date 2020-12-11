@@ -69,10 +69,11 @@ struct
 struct
 {
 	char data_set;
-	char inputs_names[ALARM_INPUTS][20] = { "","","","","","","","" };	    // Nombres de las entradas
-  uint8_t inputs_function[ALARM_INPUTS] = { 1, 1, 1, 1, 1, 1, 1, 1 };   // Funciones de las entradas
-	char PIN[5] = "1234";						                                        // clave PIN
-	char reg_numbers[NUM_PHONES][15] = { "", "", "", "", "" };	            // Números de teléfono de la agenda
+	char inputs_names[ALARM_INPUTS][20] = { "","","","","","","","" };	  // Nombres de las entradas
+  uint8_t inputs_function[ALARM_INPUTS] = { 0, 0, 0, 0, 0, 0, 0, 0 };   // Funciones de las entradas
+	char PIN[5] = "1234";						                                      // clave PIN
+	char reg_numbers[NUM_PHONES][15] = { "", "", "", "", "" };	          // Números de teléfono de la agenda
+  uint8_t active_numbers[NUM_PHONES] = {0, 0, 0, 0, 0 };                // Numeros habilitados
 }Options;
 
 bool mqtt_update = false; // Flag para indicar cuando es necesario publicar los estados
@@ -111,6 +112,7 @@ void defaultEEPROM(){
   aux = "";
     for(i = 0; i < NUM_PHONES; i++){
     aux.toCharArray(&Options.reg_numbers[i][0], sizeof(Options.reg_numbers[i]));
+    Options.active_numbers[i] = false;
   }
   saveEEPROM();
 }
@@ -164,9 +166,11 @@ void mqttDisconnected(void* response) {
  * Topic: /TestJSON/options
  * Data Esperada:
  * { 
+ *  "pin":1234
  *  "inputs_names":["IN1","IN2","IN3","IN4","IN5","IN6","IN7","IN8"], 
  *  "inputs_function":[0,0,0,0,0,0,0,0], 
- *  "numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"] 
+ *  "numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"],
+ *  "act_numbers":[0,0,0,0] 
  * }
 ***/
 void mqttData(void* response) {
@@ -192,10 +196,11 @@ void mqttData(void* response) {
                           //   "pin":1234
                           //   "inputs_names":["IN1","IN2","IN3","IN4","IN5","IN6","IN7","IN8"], 
                           //   "inputs_function":[3,1,3,4,0,0,0,0], 
-                          //   "numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"] 
+                          //   "numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"],
+                          //   "act_numbers":[0,0,0,0] 
                           //}
   if(topic.indexOf("/options")>0){
-    const size_t capacity = JSON_ARRAY_SIZE(5) + 2*JSON_ARRAY_SIZE(8) + JSON_OBJECT_SIZE(4) + 290;
+    const size_t capacity = 2*JSON_ARRAY_SIZE(5) + 2*JSON_ARRAY_SIZE(8) + JSON_OBJECT_SIZE(4) + 290;
     DynamicJsonDocument doc(capacity);
 
     DeserializationError err= deserializeJson(doc, data);
@@ -216,6 +221,7 @@ void mqttData(void* response) {
             for(int i=0; i<NUM_PHONES;i++)
             {
               strlcpy(Options.reg_numbers[i], doc["numbers"][i], sizeof(Options.reg_numbers[i]));
+              Options.active_numbers[i] = doc["act_numbers"][i];
             }
 #ifdef USE_EEPROM
             saveEEPROM();
@@ -259,7 +265,8 @@ void mqttPublished(void* response) {
   "gsm":{
         "status":1,
         "signal_level":99,
-        "numbers":["01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789"]
+        "numbers":["01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789"],
+        "act_numbers":[0,0,0,0,0]
   },
   "rf":[0,0,0,0]
   }
@@ -270,7 +277,7 @@ void UpdateMQTT()
   if(mqtt_update) // Seteo este flag global en cualquier parte y actualizo en loop
   {
     if(connected){
-      const size_t capacity = JSON_ARRAY_SIZE(4) + JSON_ARRAY_SIZE(5) + 3*JSON_ARRAY_SIZE(8) + JSON_OBJECT_SIZE(3) + JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(6) + JSON_OBJECT_SIZE(10) + 520;
+      const size_t capacity = JSON_ARRAY_SIZE(4) + 2*JSON_ARRAY_SIZE(5) + 3*JSON_ARRAY_SIZE(8) + JSON_OBJECT_SIZE(3) + JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(6) + JSON_OBJECT_SIZE(10) + 520;
 
       DynamicJsonDocument doc(capacity);
 
@@ -307,8 +314,10 @@ void UpdateMQTT()
       gsm["signal_level"] = Status.GsmSignal;
 
       JsonArray gsm_numbers = gsm.createNestedArray("numbers");
+      JsonArray gsm_act_numbers = gsm.createNestedArray("act_numbers");
       for(int i=0; i<NUM_PHONES; i++){
         gsm_numbers.add((String)Options.reg_numbers[i]);
+        gsm_act_numbers.add(Options.active_numbers[i]);
       }
 
       JsonArray rf = doc.createNestedArray("rf");
@@ -553,6 +562,8 @@ void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
     	Message = Message.substring(indexStart);  // Recorto el pin, Message comienza ahora con el comando
     	DEBUG_PRINT("Mensaje recibido: ");
       DEBUG_PRINTLN(Message);
+      DEBUG_PRINT("De: ");
+      DEBUG_PRINTLN(Number);
 		for(i=0; i<NUM_COMANDOS;i++){
 			if(Message.startsWith(comandos[i])){      // Comparo con la lista de comandos
 				command = comandos[i];	
@@ -673,11 +684,18 @@ void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
 	else{
 		SMS_out = "ERROR de PIN";
 	}
-	DEBUG_PRINT("Respuesta: ");
-	DEBUG_PRINTLN(SMS_out);
-	DEBUG_PRINT("Enviada a ");
-	DEBUG_PRINTLN(Number);
-	SIM800.sendSMS(Number, SMS_out);
+  if(Number.length()<7){  // SMS recibido de un número no válido
+    DEBUG_PRINTLN("Numero invalido");
+    SIM800.EraseSMS();    // Borra todos los mensajes recibidos
+  }
+  else{
+    DEBUG_PRINT("Respuesta: ");
+    DEBUG_PRINTLN(SMS_out);
+    DEBUG_PRINT("Enviada a ");
+    DEBUG_PRINTLN(Number);
+    SIM800.sendSMS(Number, SMS_out);
+  }
+  
 }
 
 // Envia avisos por SMS a los numeros registrados
@@ -687,7 +705,7 @@ bool AvisoSMS()
   static uint8_t send_index = 0;
   String Number = String(Options.reg_numbers[send_index]);
   String Message = "Alarma Disparada!, motivo: " + String(Options.inputs_names[Status.TriggerCause]);
-  if(!Number.startsWith("0")){ 
+  if(!Number.startsWith("0") && Options.active_numbers[send_index]){ // Verifico que el número sea válido y esté habilitado
     if(SIM800.getBusy() == 0){  // Verifico si está libre para enviar
       SIM800.sendSMS(Number, Message);
       DEBUG_PRINT("Mensaje: ");
@@ -720,6 +738,7 @@ bool AvisoSMS()
 void startup(ThreadedGSM& modem)
 {
 	DEBUG_PRINTLN("SIM800 Ready");
+  SIM800.EraseSMS();
   Status.GsmStatus = true;
 }
 
