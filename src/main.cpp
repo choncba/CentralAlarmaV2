@@ -561,7 +561,7 @@ void LeerSensores(void* context)
 bool check_number(String& Number){
   bool response = false;
 
-  if(!Number.startsWith("0") && !Number.length()<7 && Number != ""){
+  if(!Number.startsWith("0") && !(Number.length() < 7) && (Number != "")){
     response = true;
   }
   return response;
@@ -824,28 +824,6 @@ void setup() {
 
   SerialDebug.begin(115200);
 
-#ifdef USE_GSM
-  SerialModem.begin(ModemBaudRate);
-
-  SIM800.begin();
-
-	//SIM800.setInterval(ThreadedGSM::INTERVAL_CLOCK, 60000);
-	SIM800.setInterval(ThreadedGSM::INTERVAL_SIGNAL, treintaMinutos);
-	SIM800.setInterval(ThreadedGSM::INTERVAL_INBOX, 2*unSegundo);
-	SIM800.setHandlers({
-		//.signal = signal,
-		.signal = signal,
-		//.clock = clock,
-		.clock = NULL,
-		.incoming = rx_sms,
-		//.incoming = NULL,
-		.ready = startup,
-		//.ready = NULL,
-		.outgoing = NULL,
-		.power = power
-	});
-#endif
-
   // Sync with ESP-link
   DEBUG_PRINTLN(F("EL-Client starting!"));
   esp.wifiCb.attach(wifiCb); // wifi status change callback, optional (delete if not desired)
@@ -865,6 +843,28 @@ void setup() {
   mqtt.lwt(MQTT_AVAILABILITY_TOPIC,MQTT_DISCONNECTED_STATUS,QoS,RETAIN);
   DEBUG_PRINTLN(F("EL-MQTT ready"));
   
+#ifdef USE_GSM
+  SerialModem.begin(ModemBaudRate);
+
+  SIM800.begin();
+
+	//SIM800.setInterval(ThreadedGSM::INTERVAL_CLOCK, 60000);
+	SIM800.setInterval(ThreadedGSM::INTERVAL_SIGNAL, treintaMinutos);
+	SIM800.setInterval(ThreadedGSM::INTERVAL_INBOX, treintaSegundos);
+	SIM800.setHandlers({
+		//.signal = signal,
+		.signal = signal,
+		//.clock = clock,
+		.clock = NULL,
+		.incoming = rx_sms,
+		//.incoming = NULL,
+		.ready = startup,
+		//.ready = NULL,
+		.outgoing = NULL,
+		.power = power
+	});
+#endif
+
 #ifdef USE_EEPROM
   readEEPROM();                                 // Leo la EEPROM y cargo la estructura Options
   if(Options.data_set != 'T') defaultEEPROM();  // Si es la primera vez que se inicia y la memoria está en blanco, cargo datos por default

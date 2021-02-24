@@ -21,8 +21,8 @@
 #include "Arduino.h"
 
 /* Uncomment to enable printing out nice debug messages. */
-#define SerialDebug     Serial
-#define DHT_DEBUG
+//#define SerialDebug     Serial
+//#define DHT_DEBUG
 
 #ifdef DHT_DEBUG
 	#define DHT_DEBUG_PRINT(...) {SerialDebug.print(__VA_ARGS__);}

@@ -66,7 +66,7 @@
 #define USE_GSM             // Modulo GSM SIM800L
 //#define USE_RANDOM_SENSORS  // Genera valores aleatorios para los sensores y los publica cada 30 seg.
 #ifndef USE_RANDOM_SENSORS
-//#define USE_SENSOR_DHT22    // Habilita/Deshabilita DHT22
+#define USE_SENSOR_DHT22    // Habilita/Deshabilita DHT22
 #define USE_SENSOR_18B20    // Habilita/Deshabilita 18B20 
 #define USE_SENSOR_LCR      // Habilita/Deshabilita LCR
 //#define USE_SENSOR_POWER    // Habilita/Deshabilita medidor de potencia
@@ -111,7 +111,7 @@ bool connected;       // Flag que indica conexión MQTT OK
 #define NUM_PUBLISHED_TOPIC 3
 #define NUM_SUSCRIBED_TOPIC 1
 
-#define MQTT_CLIENT_ID "TestJSON"                  // Nombre del nodo
+#define MQTT_CLIENT_ID "CentralAlarma"                  // Nombre del nodo
 #define BASE_TOPIC "/" MQTT_CLIENT_ID                   // Topic de base
 #define SUBSCRIBE_TOPIC BASE_TOPIC "/#"    
 #define STATUS_TOPIC BASE_TOPIC "/status"               // Topic donde se publican todos los estados
