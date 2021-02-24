@@ -63,13 +63,13 @@
 
 // Habilitar funciones
 #define USE_EEPROM          // Almacena datos de configuracion en memoria
-#define USE_GSM             // Modulo GSM SIM800L
+//#define USE_GSM             // Modulo GSM SIM800L
 //#define USE_RANDOM_SENSORS  // Genera valores aleatorios para los sensores y los publica cada 30 seg.
 #ifndef USE_RANDOM_SENSORS
 #define USE_SENSOR_DHT22    // Habilita/Deshabilita DHT22
 #define USE_SENSOR_18B20    // Habilita/Deshabilita 18B20 
 #define USE_SENSOR_LCR      // Habilita/Deshabilita LCR
-//#define USE_SENSOR_POWER    // Habilita/Deshabilita medidor de potencia
+#define USE_SENSOR_POWER    // Habilita/Deshabilita medidor de potencia
 #define USE_RF              // Habilita/Deshabilita entradas RF
 #endif
 

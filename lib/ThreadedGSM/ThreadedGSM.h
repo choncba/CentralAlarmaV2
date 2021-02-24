@@ -15,7 +15,7 @@
 
 // Defaults
 #define THREADEDGSM_DEF_DTE_BUF_SIZ		512
-#define THREADEDGSM_DEF_AT_TIMEOUT		2000//5000
+#define THREADEDGSM_DEF_AT_TIMEOUT		5000//5000
 #define THREADEDGSM_DEF_STA_PON			15000//10000 - Le doy un poco mas de tiempo para que despues del reset levante el SIM
 #define THREADEDGSM_DEF_STA_POF			1000
 
@@ -35,7 +35,7 @@
 
 #define THREADEDGSM_INTERVAL_COUNT		3
 
-//#define THREADEDGSM_DEBUG
+#define THREADEDGSM_DEBUG
 
 #ifdef THREADEDGSM_DEBUG
 	#define DEBUG_GSM_PRINT(x)  	DEBUG_PRINT(x)

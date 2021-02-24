@@ -930,8 +930,10 @@ void loop(){
   }
 #endif    
 
+#ifdef USE_GSM
   if(EnviarAvisoSMS) EnviarAvisoSMS = !AvisoSMS();  // Envia el aviso por SMS en caso de disparo de la alarma
                                                     // el flag EnviarAvisoSMS pasa a false cuando termina con todos los n° de la agenda
+#endif                                                    
 
   UpdateMQTT();       // Publica los datos MQTT de ser necesario
 }
