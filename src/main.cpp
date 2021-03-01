@@ -712,7 +712,7 @@ void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
 	}
   if(Number.length()<7){  // SMS recibido de un número no válido
     DEBUG_PRINTLN("Numero invalido");
-    SIM800.EraseSMS();    // Borra todos los mensajes recibidos
+    //SIM800.EraseSMS();    // Borra todos los mensajes recibidos
   }
   else{
     DEBUG_PRINT("Respuesta: ");

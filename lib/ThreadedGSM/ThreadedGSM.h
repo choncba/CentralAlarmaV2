@@ -16,7 +16,7 @@
 // Defaults
 #define THREADEDGSM_DEF_DTE_BUF_SIZ		512
 #define THREADEDGSM_DEF_AT_TIMEOUT		5000//5000
-#define THREADEDGSM_DEF_STA_PON			15000//10000 - Le doy un poco mas de tiempo para que despues del reset levante el SIM
+#define THREADEDGSM_DEF_STA_PON			10000//10000 - Le doy un poco mas de tiempo para que despues del reset levante el SIM
 #define THREADEDGSM_DEF_STA_POF			1000
 
 // Use custom values or default ones
