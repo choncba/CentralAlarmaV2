@@ -12,8 +12,10 @@
 #pragma region Definicion de modulos adicionales
 
 #ifdef USE_GSM
-#include <ThreadedGSM.h>
-ThreadedGSM SIM800(SerialModem);
+//#include <ThreadedGSM.h>
+//ThreadedGSM SIM800(SerialModem);
+#include <SIM800ThreadedSMS.h>
+SIM800ThreadedSMS SIM800(SerialModem);
 #endif
 
 #ifdef USE_SENSOR_DHT22
@@ -145,6 +147,7 @@ void mqttConnected(void* response) {
 
   mqtt.subscribe(SET_TOPIC);
   mqtt.subscribe(OPTIONS_TOPIC);
+  mqtt.subscribe(SMS_SEND_TOPIC);
   mqtt.publish(MQTT_AVAILABILITY_TOPIC,MQTT_CONNECTED_STATUS,QoS,RETAIN);
 }
 
@@ -166,11 +169,18 @@ void mqttDisconnected(void* response) {
  * Topic: /TestJSON/options
  * Data Esperada:
  * { 
- *  "pin":1234
+ *  "pin":1234,
  *  "inputs_names":["IN1","IN2","IN3","IN4","IN5","IN6","IN7","IN8"], 
  *  "inputs_function":[0,0,0,0,0,0,0,0], 
  *  "numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"],
  *  "act_numbers":[0,0,0,0] 
+ * }
+ * 
+ * Topic: /TestJSON/SMS/send
+ * Data:
+ * {
+ *   "number":123456789,
+ *   "message":"abcdefghyjklmnopqrstuvwxyz"
  * }
 ***/
 void mqttData(void* response) {
@@ -228,6 +238,31 @@ void mqttData(void* response) {
 #endif
             mqtt_update = true;
           }
+  }
+/*
+* Recibe en /SMS/send
+* {
+*   "number":123456789,
+*   "message":"abcdefghyjklmnopqrstuvwxyz" -> 100 caracteres maximo
+* }
+*/
+  if(topic.indexOf("/send")>0){
+    const size_t capacity = JSON_OBJECT_SIZE(2) + 150;
+    DynamicJsonDocument doc(capacity);
+
+    DeserializationError err= deserializeJson(doc, data);
+    if(err)
+    {
+      DEBUG_PRINT(F("Error JSON: "));
+      DEBUG_PRINTLN(err.c_str());
+    }
+    else
+    {
+      String number = doc["number"].as<String>();
+      String message = doc["message"].as<String>();
+      // Mando el SMS con el contenido del JSON
+      SIM800.sendSMS(number, message);
+    }
   }
 }
 
@@ -329,6 +364,7 @@ void UpdateMQTT()
       serializeJson(doc, DataMQTT);
       DEBUG_PRINTLN(F("Enviando Datos..."));
       mqtt.publish(STATUS_TOPIC, DataMQTT, QoS, RETAIN);
+      mqtt.publish(STATUS_TOPIC, DataMQTT, QoS, RETAIN);  // Lo envío 2 veces porque HA no interpreta el JSON a la primera
 
     }
     mqtt_update = false;
@@ -568,11 +604,27 @@ bool check_number(String& Number){
 }
 
 // Interpreta los comandos enviados por SMS
-void rx_sms(ThreadedGSM& modem, String& Number, String& Message)
+void rx_sms(SIM800ThreadedSMS& modem, String& Number, String& Message)
 {
 	uint8_t i, index, num_entrada;
 	int indexStart, indexEnd;
 	String newPIN, newName, command, aux, SMS_out, newNumber;
+
+  // Publico el SMS recibido por MQTT
+  if(connected){
+
+    const size_t capacity = JSON_OBJECT_SIZE(2) + 150;
+    DynamicJsonDocument doc(capacity);
+
+    // Cargo el SMS en formato JSON y lo publico
+    doc["number"] = Number;
+    doc["message"] = Message;
+    
+    char DataMQTT[capacity];
+    serializeJson(doc, DataMQTT);
+    
+    mqtt.publish(SMS_RECEIVE_TOPIC, DataMQTT, QoS, RETAIN);
+  }
 
 	if(Message.startsWith(Options.PIN)){			      // Verifico que el SMS comience con el PIN autorizado
 		indexStart = 5;                          // Desplazo hasta el primer caracter del comando
@@ -778,15 +830,15 @@ bool AvisoSMS()
 }
 
 // Callback cuando se inicializa el modulo
-void startup(ThreadedGSM& modem)
+void startup(SIM800ThreadedSMS& modem)
 {
 	DEBUG_PRINTLN("SIM800 Ready");
-  SIM800.EraseSMS();
+  //SIM800.EraseSMS();
   Status.GsmStatus = true;
 }
 
 // Callback para reiniciar el SIM800
-void power(ThreadedGSM& modem, bool mode){
+void power(SIM800ThreadedSMS& modem, bool mode){
   digitalWrite(SIM_RES,mode);
   DEBUG_PRINT("SIM800 Power ");
   DEBUG_PRINTLN((mode)?"ON":"OFF");
@@ -794,7 +846,7 @@ void power(ThreadedGSM& modem, bool mode){
 }
 
 // Ver https://m2msupport.net/m2msupport/atcsq-signal-quality/
-void signal(ThreadedGSM& modem, ThreadedGSM::SignalLevel& Signal){
+void signal(SIM800ThreadedSMS& modem, SIM800ThreadedSMS::SignalLevel& Signal){
   Status.GsmSignal = map(Signal.Value,0,30,0,100);
   DEBUG_PRINT("SIM800 Signal: ");
   DEBUG_PRINT(Signal.Value);
@@ -848,9 +900,9 @@ void setup() {
 
   SIM800.begin();
 
-	//SIM800.setInterval(ThreadedGSM::INTERVAL_CLOCK, 60000);
-	SIM800.setInterval(ThreadedGSM::INTERVAL_SIGNAL, treintaMinutos);
-	SIM800.setInterval(ThreadedGSM::INTERVAL_INBOX, treintaSegundos);
+	//SIM800.setInterval(SIM800ThreadedSMS::INTERVAL_CLOCK, 60000);
+	SIM800.setInterval(SIM800ThreadedSMS::INTERVAL_SIGNAL, treintaMinutos);
+	SIM800.setInterval(SIM800ThreadedSMS::INTERVAL_INBOX, treintaSegundos);
 	SIM800.setHandlers({
 		//.signal = signal,
 		.signal = signal,
