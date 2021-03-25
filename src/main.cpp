@@ -363,8 +363,9 @@ void UpdateMQTT()
       char DataMQTT[capacity];
       serializeJson(doc, DataMQTT);
       DEBUG_PRINTLN(F("Enviando Datos..."));
-      mqtt.publish(STATUS_TOPIC, DataMQTT, QoS, RETAIN);
-      mqtt.publish(STATUS_TOPIC, DataMQTT, QoS, RETAIN);  // Lo envío 2 veces porque HA no interpreta el JSON a la primera
+      //mqtt.publish(STATUS_TOPIC, DataMQTT, QoS, RETAIN);
+      //mqtt.publish(STATUS_TOPIC, DataMQTT, QoS, RETAIN);  // Lo envío 2 veces porque HA no interpreta el JSON a la primera
+      mqtt.publish(STATUS_TOPIC, DataMQTT, QoS, false);
 
     }
     mqtt_update = false;
