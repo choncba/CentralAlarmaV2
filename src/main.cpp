@@ -44,6 +44,12 @@ IPAddress ip(192,168,1,1);
 ELClient esp(&Serial);
 ELClientMqtt mqtt(&esp);
 
+void mqttPub_AlarmInputs(void);
+void mqttPub_AlarmStatus(void);
+void mqttPub_AlarmOptions(void);
+void LeerSensores(void);
+void mqttPublishAll(void*);  
+
 #pragma region Variables Globales
 // Estructura con los estados de la alarma
 struct
@@ -78,13 +84,11 @@ struct
   uint8_t active_numbers[NUM_PHONES] = {0, 0, 0, 0, 0 };                // Numeros habilitados
 }Options;
 
-bool mqtt_update = false; // Flag para indicar cuando es necesario publicar los estados
-
 // Timers
 #ifdef USE_RANDOM_SENSORS
 unsigned long timer;
 #endif
-Timer t_leds, t_sensores, t_mqtt, t_gsm;
+Timer t_leds, t_sensores, t_mqtt; //, t_gsm;
 int timerLEDS = 0;
 int id_timerAviso = 0;
 
@@ -141,14 +145,20 @@ void wifiCb(void* response) {
 // Para poder recibir JSON largos se modifico en ELClient.h:
 //        uint8_t _protoBuf[128]; /**< Protocol buffer */
 // Por:   uint8_t _protoBuf[512]; /**< Protocol buffer */
+// Por:   uint8_t _protoBuf[1024]; /**< Protocol buffer */ Para ArfuinoJson v6+
 void mqttConnected(void* response) {
   DEBUG_PRINTLN(F("MQTT connected!"));
   connected = true;
 
-  mqtt.subscribe(SET_TOPIC);
-  mqtt.subscribe(OPTIONS_TOPIC);
+  mqtt.subscribe(ALARM_SET_TOPIC);
+  mqtt.subscribe(ALARM_SET_OPTIONS_TOPIC);
   mqtt.subscribe(SMS_SEND_TOPIC);
   mqtt.publish(MQTT_AVAILABILITY_TOPIC,MQTT_CONNECTED_STATUS,QoS,RETAIN);
+
+  mqttPublishAll((void*)0);
+  // mqttPub_AlarmInputs();
+  // mqttPub_AlarmOptions();
+  // mqttPub_AlarmStatus();
 }
 
 // Callback when MQTT is disconnected
@@ -157,32 +167,8 @@ void mqttDisconnected(void* response) {
   connected = false;
 }
 
-/***
- * Suscripciones:
- * 
- * Topic: /TestJSON/set
- * Data Esperada:
- * {
- *   "set":"ARM_HOME"
- * } 
- * 
- * Topic: /TestJSON/options
- * Data Esperada:
- * { 
- *  "pin":1234,
- *  "inputs_names":["IN1","IN2","IN3","IN4","IN5","IN6","IN7","IN8"], 
- *  "inputs_function":[0,0,0,0,0,0,0,0], 
- *  "numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"],
- *  "act_numbers":[0,0,0,0] 
- * }
- * 
- * Topic: /TestJSON/SMS/send
- * Data:
- * {
- *   "number":123456789,
- *   "message":"abcdefghyjklmnopqrstuvwxyz"
- * }
-***/
+/* Suscripciones: */
+
 void mqttData(void* response) {
   ELClientResponse *res = (ELClientResponse *)response;
 
@@ -194,22 +180,29 @@ void mqttData(void* response) {
   String data = res->popString();
   DEBUG_PRINTLN(data);
 
-// Hassio publica:  Topic: /TestJSON/set
-//                  Data: (0 , 1, 2) - DISARMED/ARMED_HOME/ARMED_AWAY
-  if(topic.indexOf("/set")>0){
-    Status.AlarmNextStatus = data.toInt();
-    mqtt_update = true;
+// Hassio publica:  Topic: /Central/Alarm/Set
+//                  data: "DISARM", "ARM_HOME", "ARM_AWAY", "PENDING", "TRIGGERED"
+  if(topic.indexOf("/Alarm/Set")>0){
+    for(uint8_t value = 0; value<NUM_STATUS; value++){
+      if(data.equals(AlarmCMD[value])>0){
+        Status.AlarmNextStatus = value;
+        DEBUG_PRINT(F("Alarm Status: "));
+        DEBUG_PRINTLN(AlarmCMD[value]);
+        break;
+      }
+    }
   }
 
-// Hassio publica:  Topic: /TestJSON/options
-//                  Data:   { 
-                          //   "pin":1234
-                          //   "inputs_names":["IN1","IN2","IN3","IN4","IN5","IN6","IN7","IN8"], 
-                          //   "inputs_function":[3,1,3,4,0,0,0,0], 
-                          //   "numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"],
-                          //   "act_numbers":[0,0,0,0] 
-                          //}
-  if(topic.indexOf("/options")>0){
+// Hassio publica:  Topic: /Central/Alarm/setOptions
+//                  Data:  
+                        // { 
+                        // "pin":1234
+                        // "inputs_names":["IN1","IN2","IN3","IN4","IN5","IN6","IN7","IN8"], 
+                        // "inputs_function":[3,1,3,4,0,0,0,0], 
+                        // "numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"],
+                        // "act_numbers":[0,0,0,0] 
+                        // }
+  if(topic.indexOf("/Alarm/setOptions")>0){
     const size_t capacity = 2*JSON_ARRAY_SIZE(5) + 2*JSON_ARRAY_SIZE(8) + JSON_OBJECT_SIZE(4) + 290;
     DynamicJsonDocument doc(capacity);
 
@@ -236,7 +229,7 @@ void mqttData(void* response) {
 #ifdef USE_EEPROM
             saveEEPROM();
 #endif
-            mqtt_update = true;
+            mqttPub_AlarmOptions();
           }
   }
 /*
@@ -270,111 +263,130 @@ void mqttPublished(void* response) {
   DEBUG_PRINTLN(F("MQTT published"));
 }
 
-/***
-* // Publica todas las variables en un unico JSON
-* Ejemplo de JSON, ver espacio necesario con https://arduinojson.org/v6/assistant/
-* Topic: /CentralAlarma/status
-* Data:
-* {
-  "status":1,
-  "alarm":{
-    "status": 0,
-    "trigger_cause": 1,
-    "pin": 12345678,
-    "inputs_status":[0,0,0,0,0,0,0,0],
-    "inputs_names":["01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789"],
-    "inputs_function":[0,0,0,0,0,0,0,0]
-  },
-  "sensors":{
-    "temp_int":99.99,
-    "temp_ext":99.99,
-    "hum_ext":99,
-    "lcr":99,
-    "v_bat":99.99,
-    "vac":1,
-    "voltage":999,
-    "current":99.99,
-    "power":9999.99,
-    "energy":999999
-  },
-  "gsm":{
-        "status":1,
-        "signal_level":99,
-        "numbers":["01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789","01234567890123456789"],
-        "act_numbers":[0,0,0,0,0]
-  },
-  "rf":[0,0,0,0]
-  }
-***/
-// Publica todas las variables en un unico JSON
-void UpdateMQTT()
-{
-  if(mqtt_update) // Seteo este flag global en cualquier parte y actualizo en loop
+//////////////////////////////////////
+//        Publicaciones MQTT        //
+//////////////////////////////////////
+
+// Publico el estado de la alarma
+void mqttPub_AlarmStatus(){
+  if(connected)
   {
-    if(connected){
-      const size_t capacity = JSON_ARRAY_SIZE(4) + 2*JSON_ARRAY_SIZE(5) + 3*JSON_ARRAY_SIZE(8) + JSON_OBJECT_SIZE(3) + JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(6) + JSON_OBJECT_SIZE(10) + 520;
+    mqtt.publish(ALARM_STATUS_TOPIC, AlarmStatus[Status.AlarmStatus],QoS,RETAIN);
+  }
+}
 
-      DynamicJsonDocument doc(capacity);
+// Publico el estado de las entradas de la alarma y entradas RF
+void mqttPub_AlarmInputs(){
+  if(connected)
+  {
+    StaticJsonDocument<128> doc;
 
-      doc["status"] = 1;
+    JsonArray sensors = doc.createNestedArray("sensors");
 
-      JsonObject alarm = doc.createNestedObject("alarm");
-      alarm["status"] = Status.AlarmStatus;
-      alarm["trigger_cause"] = Status.TriggerCause;
-      alarm["pin"] = Options.PIN;
+    for(int i=0; i < ALARM_INPUTS; i++){
+      sensors.add(Status.Entrada[i]);
+    }
 
-      JsonArray alarm_inputs_status = alarm.createNestedArray("inputs_status");
-      JsonArray alarm_inputs_names = alarm.createNestedArray("inputs_names");
-      JsonArray alarm_inputs_function = alarm.createNestedArray("inputs_function");
-      for(int i=0; i < ALARM_INPUTS; i++){
-        alarm_inputs_status.add(Status.Entrada[i]);
-        alarm_inputs_names.add((String)Options.inputs_names[i]);
-        alarm_inputs_function.add(Options.inputs_function[i]);
-      }
-
-      JsonObject sensors = doc.createNestedObject("sensors");
-      sensors["temp_int"] = Status.InsideTemp;
-      sensors["temp_ext"] = Status.OutsideTemp;
-      sensors["hum_ext"] = Status.OutsideHum;
-      sensors["lcr"] = Status.LumExt;
-      sensors["v_bat"] = Status.Vbat;
-      sensors["vac"] = Status.Vac;
-      sensors["voltage"] = Status.voltage;
-      sensors["current"] = Status.current;
-      sensors["power"] = Status.power;
-      sensors["energy"] = Status.energy;
-
-      JsonObject gsm = doc.createNestedObject("gsm");
-      gsm["status"] = Status.GsmStatus;
-      gsm["signal_level"] = Status.GsmSignal;
-
-      JsonArray gsm_numbers = gsm.createNestedArray("numbers");
-      JsonArray gsm_act_numbers = gsm.createNestedArray("act_numbers");
-      for(int i=0; i<NUM_PHONES; i++){
-        gsm_numbers.add((String)Options.reg_numbers[i]);
-        gsm_act_numbers.add(Options.active_numbers[i]);
-      }
-
-      JsonArray rf = doc.createNestedArray("rf");
+    JsonArray rf = doc.createNestedArray("rf");
       for(int i=0; i<RF_INPUTS; i++){
         rf.add(Status.RFin[i]);
       }
       
-      char DataMQTT[capacity];
+      char DataMQTT[128];
       serializeJson(doc, DataMQTT);
       DEBUG_PRINTLN(F("Enviando Datos..."));
-      //mqtt.publish(STATUS_TOPIC, DataMQTT, QoS, RETAIN);
-      //mqtt.publish(STATUS_TOPIC, DataMQTT, QoS, RETAIN);  // Lo envío 2 veces porque HA no interpreta el JSON a la primera
-      mqtt.publish(STATUS_TOPIC, DataMQTT, QoS, false);
-
-    }
-    mqtt_update = false;
+      mqtt.publish(ALARM_INPUTS_TOPIC, DataMQTT, QoS, false);
   }
 }
 
-void mqttPublish(void *context){ 
+// Publico las opciones de la alarma
+void mqttPub_AlarmOptions(){
+  if(connected)
+  {
+    StaticJsonDocument<512> doc;
+
+    doc["pin"] = Options.PIN;
+
+    JsonArray alarm_inputs_names = doc.createNestedArray("inputs_names");
+    JsonArray alarm_inputs_function = doc.createNestedArray("inputs_function");
+    for(int i=0; i < ALARM_INPUTS; i++){
+      alarm_inputs_names.add((String)Options.inputs_names[i]);
+      alarm_inputs_function.add(Options.inputs_function[i]);
+    }
+
+    JsonArray numbers = doc.createNestedArray("numbers");
+    JsonArray act_numbers = doc.createNestedArray("act_numbers");
+    for(int i=0; i<NUM_PHONES; i++){
+      numbers.add((String)Options.reg_numbers[i]);
+      act_numbers.add(Options.active_numbers[i]);
+    }
+
+    char DataMQTT[512];
+    serializeJson(doc, DataMQTT);
+    DEBUG_PRINTLN(F("Enviando Datos..."));
+    mqtt.publish(ALARM_OPTIONS_TOPIC, DataMQTT, QoS, false);
+  }
+}
+
+// Corrijo a 2 decimales, ver https://arduinojson.org/v6/how-to/configure-the-serialization-of-floats/
+double round2(double value) {
+   return (int)(value * 100 + 0.5) / 100.0;
+}
+
+// Publico informacion de los sensores
+void mqttPub_Sensors(){
+  if(connected)
+  {
+    StaticJsonDocument<256> doc;
+    
+    doc["trigger_cause"] = Status.TriggerCause;
+    doc["temp_int"] = round2(Status.InsideTemp);
+    doc["temp_ext"] = round2(Status.OutsideTemp);
+    doc["hum_ext"] = round2(Status.OutsideHum);
+    doc["lcr"] = Status.LumExt;
+    doc["v_bat"] = round2(Status.Vbat);
+    doc["vac"] = Status.Vac;
+    doc["voltage"] = Status.voltage;
+    doc["current"] = Status.current;
+    doc["power"] = Status.power;
+    doc["energy"] = Status.energy;
+    doc["gsm_status"] = Status.GsmStatus;
+    doc["gsm_signal"] = Status.GsmSignal;
+
+    char DataMQTT[256];
+    serializeJson(doc, DataMQTT);
+    DEBUG_PRINTLN(F("Enviando Datos..."));
+    mqtt.publish(SENSORS_TOPIC, DataMQTT, QoS, false);
+  }
+}
+
+ // Publico el SMS recibido por MQTT
+void mqttPub_ReceivedSMS(String& Number, String& Message){
+  if(connected)
+  {
+    StaticJsonDocument<256> doc;
+    doc["number"] = Number;
+    doc["message"] = Message;
+    
+    char DataMQTT[256];
+    serializeJson(doc, DataMQTT);
+    mqtt.publish(SMS_RECEIVE_TOPIC, DataMQTT, QoS, RETAIN);
+  }
+}
+
+void mqttPublishAll(void *context){ 
   (void)context;
-  mqtt_update = true; 
+  DEBUG_PRINT(F("Publicando todo..."));
+  mqttPub_AlarmInputs();
+  mqttPub_AlarmOptions();
+  mqttPub_AlarmStatus();
+  mqttPub_Sensors();
+}
+
+void mqttPublishSensors(void *context){ 
+  (void)context;
+  LeerSensores();
+  mqttPub_Sensors();
 }
 
 #pragma endregion
@@ -411,12 +423,10 @@ void checkAlarma(){
                         if(Status.AlarmStatus == ARMED_AWAY)
                         {
                           beep(); // Suenan las sirenas durante 100 mSeg
-                        }
 #ifdef USE_GSM          
-                        id_timerAviso = 0;
-                        t_gsm.stop(id_timerAviso);
-                        EnviarAvisoSMS = true;
-#endif
+                          EnviarAvisoSMS = true;
+#endif                          
+                        }
                         break;
       case ARMED_HOME:  t_leds.stop(timerLEDS);
                         timerLEDS = t_leds.every(1000, BlinkLeds, (void*)0); // Parpadean los leds cada 1 segundo
@@ -439,7 +449,7 @@ void checkAlarma(){
       default:          break;      
     }
     Status.AlarmStatus = Status.AlarmNextStatus;
-    mqttPublish((void*)0);
+    mqttPub_AlarmStatus();
   }
 }
 #pragma endregion
@@ -492,7 +502,7 @@ void AlarmInputsCheck(){
                             break;
           default: break;
         }
-        mqttPublish((void*)0);                       // Activo el flag para publicar el cambio
+        mqttPub_AlarmInputs();
       }
     }
   }
@@ -534,7 +544,7 @@ void RfInputsCheck(){
                         break;
           default:      break;
         }
-        mqtt_update = true;
+        mqttPub_AlarmInputs();
       }
     }
   }
@@ -543,9 +553,9 @@ void RfInputsCheck(){
 
 // Lectura de Sensores
 #ifndef USE_RANDOM_SENSORS
-void LeerSensores(void* context)
+void LeerSensores()
 {
-  (void)context;
+
 #ifdef USE_SENSOR_DHT22  
   sensors_event_t event;
   dht.temperature().getEvent(&event);
@@ -611,23 +621,7 @@ void rx_sms(SIM800ThreadedSMS& modem, String& Number, String& Message)
 	int indexStart, indexEnd;
 	String newPIN, newName, command, aux, SMS_out, newNumber;
 
-  // Publico el SMS recibido por MQTT
-  if(connected){
-
-    const size_t capacity = JSON_OBJECT_SIZE(2) + 150;
-    DynamicJsonDocument doc(capacity);
-
-    // Cargo el SMS en formato JSON y lo publico
-    doc["number"] = Number;
-    doc["message"] = Message;
-    
-    char DataMQTT[capacity];
-    serializeJson(doc, DataMQTT);
-    
-    mqtt.publish(SMS_RECEIVE_TOPIC, DataMQTT, QoS, RETAIN);
-  }
-
-	if(Message.startsWith(Options.PIN)){			      // Verifico que el SMS comience con el PIN autorizado
+ 	if(Message.startsWith(Options.PIN)){			      // Verifico que el SMS comience con el PIN autorizado
 		indexStart = 5;                          // Desplazo hasta el primer caracter del comando
     	Message = Message.substring(indexStart);  // Recorto el pin, Message comienza ahora con el comando
     	DEBUG_PRINT("Mensaje recibido: ");
@@ -939,13 +933,13 @@ DEBUG_PRINTLN(F("DHT22 Temperature/Humidity Sensor Started"));
   sensors.begin();
   DEBUG_PRINTLN(F("DS18B20 Temperature sensor Started"));
 #endif
-  t_sensores.every(unMinuto, LeerSensores, (void*)0);        // Lee la informacion de sonsores cada 1 minuto
-  LeerSensores((void*)0); // Leo los sensores al iniciar
+  t_sensores.every(unMinuto, mqttPublishSensors, (void*)0);   // Lee y publica la informacion de sensores cada 10 minutos
+  //mqttPublishSensors((void*)0);
 #endif
 
-  t_mqtt.every(diezMinutos, mqttPublish, (void*)0); // Publica todo cada 10 minutos
-
-  mqttPublish((void*)0);  // Publico todo al iniciar
+  t_mqtt.every(unaHora, mqttPublishAll, (void*)0); // Publica todo cada 1 hora
+  
+  //mqttPublishAll((void*)0);  // Publico todo al iniciar
 }
 #pragma endregion
 
@@ -988,7 +982,6 @@ void loop(){
                                                     // el flag EnviarAvisoSMS pasa a false cuando termina con todos los n° de la agenda
 #endif                                                    
 
-  UpdateMQTT();       // Publica los datos MQTT de ser necesario
 }
 
 

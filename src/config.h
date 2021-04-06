@@ -79,6 +79,7 @@ const unsigned long treintaSegundos = 30 * unSegundo; // 30000 ms / 30 seg
 const unsigned long unMinuto = 60 * unSegundo; // 60000 ms / 1 min
 const unsigned long diezMinutos = 10 * unMinuto; // 600000 ms/10 min
 const unsigned long treintaMinutos = 30 * unMinuto; // 600000 ms/10 min
+const unsigned long unaHora = 60 * unMinuto;
 
 /// *** Parametros de la alarma *** ///
 
@@ -111,15 +112,24 @@ bool connected;       // Flag que indica conexión MQTT OK
 #define NUM_PUBLISHED_TOPIC 3
 #define NUM_SUSCRIBED_TOPIC 1
 
-#define MQTT_CLIENT_ID "CentralAlarma"                  // Nombre del nodo
+// Topics Base
+#define MQTT_CLIENT_ID "Central"                        // Nombre del nodo
 #define BASE_TOPIC "/" MQTT_CLIENT_ID                   // Topic de base
-#define SUBSCRIBE_TOPIC BASE_TOPIC "/#"    
-#define STATUS_TOPIC BASE_TOPIC "/status"               // Topic donde se publican todos los estados
-#define SMS_SEND_TOPIC BASE_TOPIC "/SMS/send"
-#define SMS_RECEIVE_TOPIC BASE_TOPIC "/SMS/received"
-#define SET_TOPIC BASE_TOPIC "/set"                     // Topic para recibir comandos de la Alarma
-#define OPTIONS_TOPIC BASE_TOPIC "/options"             // Topic para recibir opciones
-#define MQTT_AVAILABILITY_TOPIC STATUS_TOPIC "/LWT"     // Topic para publicar LWT
+// Topics funciones de alarma
+#define ALARM_TOPIC BASE_TOPIC "/Alarm"                 // Topic para funciones de alarma
+#define ALARM_STATUS_TOPIC ALARM_TOPIC "/Status"        // Topic donde se publica el estado de la alarma
+#define ALARM_INPUTS_TOPIC ALARM_TOPIC "/Inputs"        // Topic donde se publican las entradas de la alarma y llavero RF 
+#define ALARM_OPTIONS_TOPIC ALARM_TOPIC "/Options"      // Topic donde se publican las opciones de la alarma
+#define ALARM_SET_TOPIC ALARM_TOPIC "/Set"              // Topic donde se suscribe para recibir comandos de la alarma
+#define ALARM_SET_OPTIONS_TOPIC ALARM_TOPIC "/SetOptions" // Topic donde se suscribe para recibir opciones de alarma
+// Topics sensores
+#define SENSORS_TOPIC BASE_TOPIC "/Sensors"             // Topic donde se publican los sensores
+// Topics funciones SMS
+#define SMS_TOPIC BASE_TOPIC "/SMS"                     // Topic para funciones SMS
+#define SMS_SEND_TOPIC SMS_TOPIC "/send"
+#define SMS_RECEIVE_TOPIC SMS_TOPIC "/received"
+// Topic de disponibilidad
+#define MQTT_AVAILABILITY_TOPIC BASE_TOPIC "/LWT"       // Topic para publicar LWT
 #define MQTT_CONNECTED_STATUS "online"                  // Estados LWT
 #define MQTT_DISCONNECTED_STATUS "offline"              // Estados LWT
 

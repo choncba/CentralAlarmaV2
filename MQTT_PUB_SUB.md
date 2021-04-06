@@ -3,18 +3,16 @@ MQTT_CLIENT_ID = CentralAlarma
 Subscriptions
 
 /MQTT_CLIENT_ID/Alarm/Set
-    0
-    1
-    2
+"DISARM", "ARM_HOME", "ARM_AWAY", "PENDING", "TRIGGERED"
     
-/MQTT_CLIENT_ID/Options
-    { 
-    "pin":1234
-    "inputs_names":["IN1","IN2","IN3","IN4","IN5","IN6","IN7","IN8"], 
-    "inputs_function":[3,1,3,4,0,0,0,0], 
-    "numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"],
-    "act_numbers":[0,0,0,0] 
-    }
+/MQTT_CLIENT_ID/Alarm/setOptions
+{ 
+"pin":1234
+"inputs_names":["IN1","IN2","IN3","IN4","IN5","IN6","IN7","IN8"], 
+"inputs_function":[3,1,3,4,0,0,0,0], 
+"numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"],
+"act_numbers":[0,0,0,0] 
+}
 
 /MQTT_CLIENT_ID/SMS/send
 {

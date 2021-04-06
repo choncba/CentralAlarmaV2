@@ -125,7 +125,7 @@ class ELClient {
     boolean _debugEn; /**< Flag for debug - True = enabled, False = disabled */
     uint16_t crc; /**< CRC checksum */
     ELClientProtocol _proto; /**< Protocol structure */
-    uint8_t _protoBuf[512]; /**< Protocol buffer */
+    uint8_t _protoBuf[1024]; /**< Protocol buffer */
 
     void init();
     void DBG(const char* info);

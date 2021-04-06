@@ -9,7 +9,7 @@
 
 # Sensor que recibe todos los atributos JSON desde la central de alarma
 sensor:
-# Informacion de sensores enviados por lacentral en 
+# Informacion de sensores enviados por la central en 
 # /Central/Sensors
 # {
 #     "trigger_cause": 1,
@@ -29,7 +29,7 @@ sensor:
   - platform: mqtt
     unique_id: "alarm_trigger_cause"
     name: "alarm_trigger_cause"
-    friendly_name: "Causa del Disparo"
+    # friendly_name: "Causa del Disparo"
     # unit_of_measurement: "none"
     # device_class: none
     state_topic: "/Central/Sensors"
@@ -38,7 +38,7 @@ sensor:
   - platform: mqtt
     unique_id: "central_temp_int"
     name: "central_temp_int"
-    friendly_name: "Temperatura Comedor"
+    # friendly_name: "Temperatura Comedor"
     unit_of_measurement: "°C"
     device_class: temperature
     state_topic: "/Central/Sensors"
@@ -47,7 +47,7 @@ sensor:
   - platform: mqtt
     unique_id: "central_temp_ext"
     name: "central_temp_ext"
-    friendly_name: "Temperatura Fuera"
+    # friendly_name: "Temperatura Fuera"
     unit_of_measurement: "°C"
     device_class: temperature
     state_topic: "/Central/Sensors"
@@ -56,7 +56,7 @@ sensor:
   - platform: mqtt
     unique_id: "central_hum_ext"
     name: "central_hum_ext"
-    friendly_name: "Humedad Fuera"
+    # friendly_name: "Humedad Fuera"
     unit_of_measurement: "%"
     device_class: humidity
     state_topic: "/Central/Sensors"
@@ -65,7 +65,7 @@ sensor:
   - platform: mqtt
     unique_id: "central_lcr"
     name: "central_lcr"
-    friendly_name: "Luminosidad"
+    # friendly_name: "Luminosidad"
     unit_of_measurement: "%"
     device_class: illuminance
     state_topic: "/Central/Sensors"
@@ -74,7 +74,7 @@ sensor:
   - platform: mqtt
     unique_id: "central_vbat"
     name: "central_vbat"
-    friendly_name: "Batería"
+    # friendly_name: "Batería"
     unit_of_measurement: "V"
     device_class: voltage
     state_topic: "/Central/Sensors"
@@ -83,7 +83,7 @@ sensor:
   - platform: mqtt
     unique_id: "central_voltage"
     name: "central_voltage"
-    friendly_name: "Tensión de red"
+    # friendly_name: "Tensión de red"
     unit_of_measurement: "V"
     device_class: voltage
     state_topic: "/Central/Sensors"
@@ -92,7 +92,7 @@ sensor:
   - platform: mqtt
     unique_id: "central_current"
     name: "central_current"
-    friendly_name: "Corriente de red"
+    # friendly_name: "Corriente de red"
     unit_of_measurement: "A"
     device_class: current
     state_topic: "/Central/Sensors"
@@ -101,7 +101,7 @@ sensor:
   - platform: mqtt
     unique_id: "central_power"
     name: "central_power"
-    friendly_name: "Potencia de red"
+    # friendly_name: "Potencia de red"
     unit_of_measurement: "W"
     device_class: power
     state_topic: "/Central/Sensors"
@@ -110,7 +110,7 @@ sensor:
   - platform: mqtt
     unique_id: "central_energy"
     name: "central_energy"
-    friendly_name: "Energía de red"
+    # friendly_name: "Energía de red"
     unit_of_measurement: "Wh"
     device_class: energy
     state_topic: "/Central/Sensors"
@@ -119,13 +119,37 @@ sensor:
   - platform: mqtt
     unique_id: "central_gsm_level"
     name: "central_gsm_level"
-    friendly_name: "Señal GSM"
+    # friendly_name: "Señal GSM"
     unit_of_measurement: "dBm"
     device_class: signal_strength
     state_topic: "/Central/Sensors"
     value_template: "{{ value_json.gsm_signal }}"
     availability_topic: "/Central/LWT"
 
+# Sensor para datos JSON recibidos en /Central/Alarm/Options
+# { 
+# "pin":1234,
+# "inputs_names":["IN1","IN2","IN3","IN4","IN5","IN6","IN7","IN8"], 
+# "inputs_function":[0,0,0,0,0,0,0,0], 
+# "numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"],
+# "act_numbers":[0,0,0,0] 
+# }
+  - platform: mqtt
+    name: "alarm_options"
+    state_topic: "/Central/Alarm/Options"
+    json_attributes_topic: "/Central/Alarm/Options"
+
+# Sensor para datos JSON recibidos en /Central/SMS/Received
+# {
+#   "number": 3516510632,
+#   "message": "Hola"
+# }
+  - platform: mqtt
+    name: "sms_received"
+    state_topic: "/Central/SMS/Received"
+    json_attributes_topic: "/Central/SMS/Received"
+
+# Panel de alarma MQTT
 alarm_control_panel:
   - platform: mqtt
     state_topic: "/Central/Alarm/Status"
@@ -137,7 +161,7 @@ binary_sensor:
   - platform: mqtt
     name: "central_vac"
     unique_id: "central_gsm_level"
-    friendly_name: "Energía de red"
+    # friendly_name: "Energía de red"
     state_topic: "/Central/Sensors"
     payload_on: 1
     payload_off: 0
@@ -147,7 +171,7 @@ binary_sensor:
   - platform: mqtt
     name: "central_gsm_status"
     unique_id: "central_gsm_status"
-    friendly_name: "Red GSM"
+    # friendly_name: "Red GSM"
     state_topic: "/Central/Sensors"
     payload_on: 1
     payload_off: 0
@@ -167,7 +191,7 @@ binary_sensor:
     payload_on: 1
     payload_off: 0
     availability_topic: "/Central/LWT"
-    device_class: opening
+    device_class: door
     value_template: "{{ value_json.sensors[0] }}"
   - platform: mqtt
     name: "central_entrada2"
@@ -176,7 +200,7 @@ binary_sensor:
     payload_on: 1
     payload_off: 0
     availability_topic: "/Central/LWT"
-    device_class: opening
+    device_class: window
     value_template: "{{ value_json.sensors[1] }}"      
   - platform: mqtt
     name: "central_entrada3"
@@ -185,7 +209,7 @@ binary_sensor:
     payload_on: 1
     payload_off: 0
     availability_topic: "/Central/LWT"
-    device_class: opening
+    device_class: motion
     value_template: "{{ value_json.sensors[2] }}"
   - platform: mqtt
     name: "central_entrada4"
@@ -441,138 +465,139 @@ input_select:
       - Disparo Demorado
 
 automation:
-  - alias: "Update inputs data"
+  - alias: "Update Alarm Options"
     trigger:
       - platform: state
-        entity_id: sensor.datos_json
+        entity_id: sensor.alarm_options
     action:
 # Actualizo el pin de la alarma
       - service: input_text.set_value
         data_template:
-          entity_id: input_text.alarm_pin
-          value: "{{ state_attr('sensor.datos_json', 'alarm').pin }}"
-# Actualiza los nombres de las entradas recibidas desde la alarma por mqtt    
+          entity_id: input_text.pin
+          value: "{{ state_attr('sensor.alarm_options', 'pin') }}"
+ # Actualiza el nombre de la entrada que produce el disparo de la alarma
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_last_trigger
-          value: "{{ state_attr('sensor.datos_json', 'alarm').inputs_names[state_attr('sensor.datos_json', 'alarm').trigger_cause] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'inputs_names')[states('sensor.alarm_trigger_cause') | int ] }}"
+# Actualiza los nombres de las entradas recibidas desde la alarma por mqtt
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_input1_name
-          value: "{{ state_attr('sensor.datos_json', 'alarm').inputs_names[0] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'inputs_names')[0] }}"
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_input2_name
-          value: "{{ state_attr('sensor.datos_json', 'alarm').inputs_names[1] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'inputs_names')[1] }}"
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_input3_name
-          value: "{{ state_attr('sensor.datos_json', 'alarm').inputs_names[2] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'inputs_names')[2] }}"
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_input4_name
-          value: "{{ state_attr('sensor.datos_json', 'alarm').inputs_names[3] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'inputs_names')[3] }}"
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_input5_name
-          value: "{{ state_attr('sensor.datos_json', 'alarm').inputs_names[4] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'inputs_names')[4] }}"
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_input6_name
-          value: "{{ state_attr('sensor.datos_json', 'alarm').inputs_names[5] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'inputs_names')[5] }}"
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_input7_name
-          value: "{{ state_attr('sensor.datos_json', 'alarm').inputs_names[6] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'inputs_names')[6] }}"
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_input8_name
-          value: "{{ state_attr('sensor.datos_json', 'alarm').inputs_names[7] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'inputs_names')[7] }}"
 # Actualiza la funcion de las entradas desde la alarma por mqtt
       - service: input_select.select_option
         data_template:
           entity_id: input_select.alarm_input1_func
-          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.datos_json', 'alarm').inputs_function[0]] }}"
+          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.alarm_options', 'inputs_function')[0]] }}"
       - service: input_select.select_option
         data_template:
           entity_id: input_select.alarm_input2_func
-          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.datos_json', 'alarm').inputs_function[1]] }}"          
+          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.alarm_options', 'inputs_function')[1]] }}"          
       - service: input_select.select_option
         data_template:
           entity_id: input_select.alarm_input3_func
-          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.datos_json', 'alarm').inputs_function[2]] }}"          
+          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.alarm_options', 'inputs_function')[2]] }}"          
       - service: input_select.select_option
         data_template:
           entity_id: input_select.alarm_input4_func
-          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.datos_json', 'alarm').inputs_function[3]] }}"          
+          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.alarm_options', 'inputs_function')[3]] }}"          
       - service: input_select.select_option
         data_template:
           entity_id: input_select.alarm_input5_func
-          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.datos_json', 'alarm').inputs_function[4]] }}"
+          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.alarm_options', 'inputs_function')[4]] }}"
       - service: input_select.select_option
         data_template:
           entity_id: input_select.alarm_input6_func
-          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.datos_json', 'alarm').inputs_function[5]] }}"          
+          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.alarm_options', 'inputs_function')[5]] }}"          
       - service: input_select.select_option
         data_template:
           entity_id: input_select.alarm_input7_func
-          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.datos_json', 'alarm').inputs_function[6]] }}"          
+          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.alarm_options', 'inputs_function')[6]] }}"          
       - service: input_select.select_option
         data_template:
           entity_id: input_select.alarm_input8_func
-          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.datos_json', 'alarm').inputs_function[7]] }}"            
+          option: "{% set valor_str = ['Desactivada', 'Disparo en Armado Total/Parcial', 'Disparo en Armado Total', 'Disparo Siempre', 'Disparo Demorado'] -%} {{ valor_str[state_attr('sensor.alarm_options', 'inputs_function')[7]] }}"            
 # Actualizo la agenda telefónica
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_phone1
-          value: "{{ state_attr('sensor.datos_json', 'gsm').numbers[0] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'numbers')[0] }}"
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_phone2
-          value: "{{ state_attr('sensor.datos_json', 'gsm').numbers[1] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'numbers')[1] }}"
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_phone3
-          value: "{{ state_attr('sensor.datos_json', 'gsm').numbers[2] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'numbers')[2] }}"
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_phone4
-          value: "{{ state_attr('sensor.datos_json', 'gsm').numbers[3] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'numbers')[3] }}"
       - service: input_text.set_value
         data_template:
           entity_id: input_text.alarm_phone5
-          value: "{{ state_attr('sensor.datos_json', 'gsm').numbers[4] }}"
+          value: "{{ state_attr('sensor.alarm_options', 'numbers')[4] }}"
 # Actualizo los numeros activados
       - service: >
-          {% if state_attr('sensor.datos_json', 'gsm').act_numbers[0] == 1 %}
+          {% if state_attr('sensor.alarm_options', 'act_numbers')[0] == 1 %}
           input_boolean.turn_on
           {% else %}
           input_boolean.turn_off
           {% endif %}
         entity_id: input_boolean.alarm_phone1_act
       - service: >
-          {% if state_attr('sensor.datos_json', 'gsm').act_numbers[1] == 1 %}
+          {% if state_attr('sensor.alarm_options', 'act_numbers')[1] == 1 %}
           input_boolean.turn_on
           {% else %}
           input_boolean.turn_off
           {% endif %}
         entity_id: input_boolean.alarm_phone2_act     
       - service: >
-          {% if state_attr('sensor.datos_json', 'gsm').act_numbers[2] == 1 %}
+          {% if state_attr('sensor.alarm_options', 'act_numbers')[2] == 1 %}
           input_boolean.turn_on
           {% else %}
           input_boolean.turn_off
           {% endif %}
         entity_id: input_boolean.alarm_phone3_act
       - service: >
-          {% if state_attr('sensor.datos_json', 'gsm').act_numbers[3] == 1 %}
+          {% if state_attr('sensor.alarm_options', 'act_numbers')[3] == 1 %}
           input_boolean.turn_on
           {% else %}
           input_boolean.turn_off
           {% endif %}
         entity_id: input_boolean.alarm_phone4_act
       - service: >
-          {% if state_attr('sensor.datos_json', 'gsm').act_numbers[4] == 1 %}
+          {% if state_attr('sensor.alarm_options', 'act_numbers')[4] == 1 %}
           input_boolean.turn_on
           {% else %}
           input_boolean.turn_off
@@ -642,7 +667,7 @@ script:
     sequence:
       - service: mqtt.publish
         data_template:
-          topic: /CentralAlarma/SMS/send                                
+          topic: /Central/SMS/send                                
           payload_template: >
                 {{ '{"number":' + states("input_text.sms_tx_number") + ',"message":"' + states("input_text.sms_tx") + '"}' }}
           retain: false
