@@ -153,12 +153,10 @@ void mqttConnected(void* response) {
   mqtt.subscribe(ALARM_SET_TOPIC);
   mqtt.subscribe(ALARM_SET_OPTIONS_TOPIC);
   mqtt.subscribe(SMS_SEND_TOPIC);
+  mqtt.subscribe(MQTT_HA_AVAILAVILITY);
   mqtt.publish(MQTT_AVAILABILITY_TOPIC,MQTT_CONNECTED_STATUS,QoS,RETAIN);
 
   mqttPublishAll((void*)0);
-  // mqttPub_AlarmInputs();
-  // mqttPub_AlarmOptions();
-  // mqttPub_AlarmStatus();
 }
 
 // Callback when MQTT is disconnected
@@ -180,20 +178,40 @@ void mqttData(void* response) {
   String data = res->popString();
   DEBUG_PRINTLN(data);
 
+  String AUX = "";
+
 // Hassio publica:  Topic: /Central/Alarm/Set
 //                  data: "DISARM", "ARM_HOME", "ARM_AWAY", "PENDING", "TRIGGERED"
-  if(topic.indexOf("/Alarm/Set")>0){
+  //AUX = String(ALARM_SET_TOPIC);
+  //if(topic.indexOf(AUX)>0){
+  if(topic.indexOf("/Set")>0){
+    DEBUG_PRINTLN("Topic Alarma detectado");
     for(uint8_t value = 0; value<NUM_STATUS; value++){
-      if(data.equals(AlarmCMD[value])>0){
+      DEBUG_PRINT("Comparando data con: ");
+      DEBUG_PRINTLN(AlarmCMD[value]);
+      if(data.startsWith(AlarmCMD[value])){
         Status.AlarmNextStatus = value;
+        DEBUG_PRINTLN("Encontrado!");
         DEBUG_PRINT(F("Alarm Status: "));
         DEBUG_PRINTLN(AlarmCMD[value]);
         break;
       }
+      else{
+        DEBUG_PRINTLN("No encontrado");
+      }
     }
   }
 
-// Hassio publica:  Topic: /Central/Alarm/setOptions
+  // Verifica el estado de HomeAssistant, publica todo si el mismo se reinicia
+  // AUX = String(MQTT_HA_AVAILAVILITY);
+  // if(topic.indexOf(AUX)>0){
+  if(topic.indexOf("homeassistant/status")>0){
+    if(data.equals("online")){
+      mqttPublishAll((void*)0);
+    }
+  }
+
+// Hassio publica:  Topic: /Central/Alarm/SetOptions
 //                  Data:  
                         // { 
                         // "pin":1234
@@ -202,7 +220,9 @@ void mqttData(void* response) {
                         // "numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"],
                         // "act_numbers":[0,0,0,0] 
                         // }
-  if(topic.indexOf("/Alarm/setOptions")>0){
+  // AUX = String(ALARM_SET_OPTIONS_TOPIC);
+  // if(topic.indexOf(AUX)>0){
+  if(topic.indexOf("Options")>0){
     const size_t capacity = 2*JSON_ARRAY_SIZE(5) + 2*JSON_ARRAY_SIZE(8) + JSON_OBJECT_SIZE(4) + 290;
     DynamicJsonDocument doc(capacity);
 
@@ -239,7 +259,9 @@ void mqttData(void* response) {
 *   "message":"abcdefghyjklmnopqrstuvwxyz" -> 100 caracteres maximo
 * }
 */
-  if(topic.indexOf("/send")>0){
+  // AUX = String(SMS_SEND_TOPIC);
+  // if(topic.indexOf(AUX)>0){
+  if(topic.indexOf("send")>0){
     const size_t capacity = JSON_OBJECT_SIZE(2) + 150;
     DynamicJsonDocument doc(capacity);
 
@@ -271,6 +293,7 @@ void mqttPublished(void* response) {
 void mqttPub_AlarmStatus(){
   if(connected)
   {
+    DEBUG_PRINTLN(F("Enviando Datos de estado de la Alarma"));
     mqtt.publish(ALARM_STATUS_TOPIC, AlarmStatus[Status.AlarmStatus],QoS,RETAIN);
   }
 }
@@ -294,8 +317,8 @@ void mqttPub_AlarmInputs(){
       
       char DataMQTT[128];
       serializeJson(doc, DataMQTT);
-      DEBUG_PRINTLN(F("Enviando Datos..."));
-      mqtt.publish(ALARM_INPUTS_TOPIC, DataMQTT, QoS, false);
+      DEBUG_PRINTLN(F("Enviando Datos de las entradas de la Alarma"));
+      mqtt.publish(ALARM_INPUTS_TOPIC, DataMQTT, QoS, RETAIN);
   }
 }
 
@@ -323,8 +346,8 @@ void mqttPub_AlarmOptions(){
 
     char DataMQTT[512];
     serializeJson(doc, DataMQTT);
-    DEBUG_PRINTLN(F("Enviando Datos..."));
-    mqtt.publish(ALARM_OPTIONS_TOPIC, DataMQTT, QoS, false);
+    DEBUG_PRINTLN(F("Enviando Datos de Opciones de la Alarma"));
+    mqtt.publish(ALARM_OPTIONS_TOPIC, DataMQTT, QoS, RETAIN);
   }
 }
 
@@ -337,26 +360,29 @@ double round2(double value) {
 void mqttPub_Sensors(){
   if(connected)
   {
-    StaticJsonDocument<256> doc;
+    if(Status.InsideTemp != 0)  // Evito que mande valores nulos si los sensores aun no están inicializados
+    {
+      StaticJsonDocument<256> doc;
     
-    doc["trigger_cause"] = Status.TriggerCause;
-    doc["temp_int"] = round2(Status.InsideTemp);
-    doc["temp_ext"] = round2(Status.OutsideTemp);
-    doc["hum_ext"] = round2(Status.OutsideHum);
-    doc["lcr"] = Status.LumExt;
-    doc["v_bat"] = round2(Status.Vbat);
-    doc["vac"] = Status.Vac;
-    doc["voltage"] = Status.voltage;
-    doc["current"] = Status.current;
-    doc["power"] = Status.power;
-    doc["energy"] = Status.energy;
-    doc["gsm_status"] = Status.GsmStatus;
-    doc["gsm_signal"] = Status.GsmSignal;
+      doc["trigger_cause"] = Status.TriggerCause;
+      doc["temp_int"] = round2(Status.InsideTemp);
+      doc["temp_ext"] = round2(Status.OutsideTemp);
+      doc["hum_ext"] = round2(Status.OutsideHum);
+      doc["lcr"] = Status.LumExt;
+      doc["v_bat"] = round2(Status.Vbat);
+      doc["vac"] = Status.Vac;
+      doc["voltage"] = Status.voltage;
+      doc["current"] = Status.current;
+      doc["power"] = Status.power;
+      doc["energy"] = Status.energy;
+      doc["gsm_status"] = Status.GsmStatus;
+      doc["gsm_signal"] = Status.GsmSignal;
 
-    char DataMQTT[256];
-    serializeJson(doc, DataMQTT);
-    DEBUG_PRINTLN(F("Enviando Datos..."));
-    mqtt.publish(SENSORS_TOPIC, DataMQTT, QoS, false);
+      char DataMQTT[256];
+      serializeJson(doc, DataMQTT);
+      DEBUG_PRINTLN(F("Enviando Datos de Sensores"));
+      mqtt.publish(SENSORS_TOPIC, DataMQTT, QoS, RETAIN);
+    }
   }
 }
 
@@ -376,7 +402,6 @@ void mqttPub_ReceivedSMS(String& Number, String& Message){
 
 void mqttPublishAll(void *context){ 
   (void)context;
-  DEBUG_PRINT(F("Publicando todo..."));
   mqttPub_AlarmInputs();
   mqttPub_AlarmOptions();
   mqttPub_AlarmStatus();
@@ -933,13 +958,11 @@ DEBUG_PRINTLN(F("DHT22 Temperature/Humidity Sensor Started"));
   sensors.begin();
   DEBUG_PRINTLN(F("DS18B20 Temperature sensor Started"));
 #endif
-  t_sensores.every(unMinuto, mqttPublishSensors, (void*)0);   // Lee y publica la informacion de sensores cada 10 minutos
-  //mqttPublishSensors((void*)0);
+  t_sensores.every(diezMinutos, mqttPublishSensors, (void*)0);   // Lee y publica la informacion de sensores cada 10 minutos
 #endif
 
   t_mqtt.every(unaHora, mqttPublishAll, (void*)0); // Publica todo cada 1 hora
-  
-  //mqttPublishAll((void*)0);  // Publico todo al iniciar
+
 }
 #pragma endregion
 

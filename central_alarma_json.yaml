@@ -137,6 +137,7 @@ sensor:
   - platform: mqtt
     name: "alarm_options"
     state_topic: "/Central/Alarm/Options"
+    value_template: "{{ value_json.pin }}"
     json_attributes_topic: "/Central/Alarm/Options"
 
 # Sensor para datos JSON recibidos en /Central/SMS/Received
@@ -473,7 +474,7 @@ automation:
 # Actualizo el pin de la alarma
       - service: input_text.set_value
         data_template:
-          entity_id: input_text.pin
+          entity_id: input_text.alarm_pin
           value: "{{ state_attr('sensor.alarm_options', 'pin') }}"
  # Actualiza el nombre de la entrada que produce el disparo de la alarma
       - service: input_text.set_value
@@ -623,7 +624,7 @@ script:
     sequence:
       - service: mqtt.publish
         data_template:
-          topic: /CentralAlarma/options
+          topic: /Central/Alarm/setOptions
 # Envio la configuración con el formato:
 # {
 # "pin":"1234",

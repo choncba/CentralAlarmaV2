@@ -132,5 +132,7 @@ bool connected;       // Flag que indica conexión MQTT OK
 #define MQTT_AVAILABILITY_TOPIC BASE_TOPIC "/LWT"       // Topic para publicar LWT
 #define MQTT_CONNECTED_STATUS "online"                  // Estados LWT
 #define MQTT_DISCONNECTED_STATUS "offline"              // Estados LWT
+// Topic de disponibilidad de Home Assistant
+#define MQTT_HA_AVAILAVILITY "homeassistant/status"
 
 
