@@ -90,7 +90,7 @@ enum ALARM_INPUT_enum {in1 = 0, in2, in3, in4, in5, in6, in7, in8 };
 #define NUM_PHONES      5   // Numeros de telefono almacenados
 // Comandos enviados/recibidos con HA
 enum Alarm_Status_enum { DISARMED=0, ARMED_HOME, ARMED_AWAY, PENDING, TRIGGERED };
-const char AlarmStatus[NUM_STATUS][11] = { "disarmed", "armed_home", "armed_away", "pending", "triggered"};
+const char AlarmStatus_txt[NUM_STATUS][11] = { "disarmed", "armed_home", "armed_away", "pending", "triggered"};
 const char AlarmCMD[NUM_STATUS][11] = { "DISARM", "ARM_HOME", "ARM_AWAY", "PENDING", "TRIGGERED"};
 // Comandos recibidos por SMS
 #define NUM_COMANDOS 10

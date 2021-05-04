@@ -275,7 +275,7 @@ void mqttPub_AlarmStatus(){
   if(connected)
   {
     DEBUG_PRINTLN(F("Enviando Datos de estado de la Alarma"));
-    mqtt.publish(ALARM_STATUS_TOPIC, AlarmStatus[Status.AlarmStatus],QoS,RETAIN);
+    mqtt.publish(ALARM_STATUS_TOPIC, AlarmStatus_txt[Status.AlarmStatus],QoS,RETAIN);
   }
 }
 
@@ -649,7 +649,7 @@ void rx_sms(SIM800ThreadedSMS& modem, String& Number, String& Message)
           Status.AlarmNextStatus = DISARMED;
 					break;
 					case INFO:						// Envia SMS con info - SMS: PIN INFO
-					SMS_out = "Alarm " + String(AlarmStatus[Status.AlarmStatus]);
+					SMS_out = "Alarm " + String(AlarmStatus_txt[Status.AlarmStatus]);
           SMS_out += " - ";
           for (int i = 0; i < ALARM_INPUTS; i++)
           {
@@ -868,9 +868,11 @@ void setup() {
   // Seteo pines de las entradas de la alarma y llavero RF
   for(uint8_t i=0;i<ALARM_INPUTS;i++){
     pinMode(ALARM_INPUT[i], INPUT_PULLUP);
+    Status.Entrada[i] = digitalRead(ALARM_INPUT[i]);
 #ifdef USE_RF    
     if(i<RF_INPUTS){
       pinMode(RF_INPUT[i], INPUT_PULLUP);
+      Status.RFin[i] = digitalRead(RF_INPUT[i]);
     }    
 #endif    
   }

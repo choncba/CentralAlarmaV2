@@ -137,7 +137,7 @@ sensor:
   - platform: mqtt
     name: "alarm_options"
     state_topic: "/Central/Alarm/Options"
-    value_template: "{{ value_json.pin }}"
+    value_template: "{{ value_json.pin }}"  # Le doy un valor cualquiera al state del sensor, si no HA da un error que excede los 255 caracteres
     json_attributes_topic: "/Central/Alarm/Options"
 
 # Sensor para datos JSON recibidos en /Central/SMS/Received
@@ -210,7 +210,7 @@ binary_sensor:
     payload_on: 1
     payload_off: 0
     availability_topic: "/Central/LWT"
-    device_class: motion
+    device_class: opening
     value_template: "{{ value_json.sensors[2] }}"
   - platform: mqtt
     name: "central_entrada4"
@@ -255,7 +255,7 @@ binary_sensor:
     payload_on: 1
     payload_off: 0
     availability_topic: "/Central/LWT"
-    device_class: opening
+    device_class: motion
     value_template: "{{ value_json.sensors[7] }}"
  
  # Entradas RF
@@ -468,8 +468,10 @@ input_select:
 automation:
   - alias: "Update Alarm Options"
     trigger:
-      - platform: state
-        entity_id: sensor.alarm_options
+      - platform: mqtt
+        topic: "/Central/Alarm/Options"
+      # - platform: state
+      #   entity_id: sensor.alarm_options
     action:
 # Actualizo el pin de la alarma
       - service: input_text.set_value
@@ -607,24 +609,26 @@ automation:
 # Actualizo  SMS recibido
   - alias: "Update received SMS"
     trigger:
-      - platform: state
-        entity_id: sensor.sms_received_json
+      - platform: mqtt
+        topic: "/Central/SMS/Received"
+      # - platform: state
+      #   entity_id: sensor.sms_received
     action:
       - service: input_text.set_value
         data_template:
           entity_id: input_text.sms_rx
-          value: "{{ state_attr('sensor.sms_received_json', 'message') }}"
+          value: "{{ state_attr('sensor.sms_received', 'message') }}"
       - service: input_text.set_value
         data_template:
           entity_id: input_text.sms_rx_number
-          value: "{{ state_attr('sensor.sms_received_json', 'number') }}"
+          value: "{{ state_attr('sensor.sms_received', 'number') }}"
 
 script:
   enviar_config:
     sequence:
       - service: mqtt.publish
         data_template:
-          topic: /Central/Alarm/setOptions
+          topic: /Central/Alarm/SetOptions
 # Envio la configuración con el formato:
 # {
 # "pin":"1234",
