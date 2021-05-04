@@ -178,35 +178,20 @@ void mqttData(void* response) {
   String data = res->popString();
   DEBUG_PRINTLN(data);
 
-  String AUX = "";
-
 // Hassio publica:  Topic: /Central/Alarm/Set
 //                  data: "DISARM", "ARM_HOME", "ARM_AWAY", "PENDING", "TRIGGERED"
-  //AUX = String(ALARM_SET_TOPIC);
-  //if(topic.indexOf(AUX)>0){
-  if(topic.indexOf("/Set")>0){
-    DEBUG_PRINTLN("Topic Alarma detectado");
+  if(topic == ALARM_SET_TOPIC){
     for(uint8_t value = 0; value<NUM_STATUS; value++){
-      DEBUG_PRINT("Comparando data con: ");
-      DEBUG_PRINTLN(AlarmCMD[value]);
-      if(data.startsWith(AlarmCMD[value])){
+      if(data == AlarmCMD[value]){
         Status.AlarmNextStatus = value;
-        DEBUG_PRINTLN("Encontrado!");
-        DEBUG_PRINT(F("Alarm Status: "));
-        DEBUG_PRINTLN(AlarmCMD[value]);
         break;
-      }
-      else{
-        DEBUG_PRINTLN("No encontrado");
       }
     }
   }
 
   // Verifica el estado de HomeAssistant, publica todo si el mismo se reinicia
-  // AUX = String(MQTT_HA_AVAILAVILITY);
-  // if(topic.indexOf(AUX)>0){
-  if(topic.indexOf("homeassistant/status")>0){
-    if(data.equals("online")){
+  if(topic == MQTT_HA_AVAILAVILITY){
+    if(data == MQTT_CONNECTED_STATUS){
       mqttPublishAll((void*)0);
     }
   }
@@ -220,9 +205,7 @@ void mqttData(void* response) {
                         // "numbers":["0123456789","0123456789","0123456789","0123456789","0123456789"],
                         // "act_numbers":[0,0,0,0] 
                         // }
-  // AUX = String(ALARM_SET_OPTIONS_TOPIC);
-  // if(topic.indexOf(AUX)>0){
-  if(topic.indexOf("Options")>0){
+  if(topic == ALARM_SET_OPTIONS_TOPIC){
     const size_t capacity = 2*JSON_ARRAY_SIZE(5) + 2*JSON_ARRAY_SIZE(8) + JSON_OBJECT_SIZE(4) + 290;
     DynamicJsonDocument doc(capacity);
 
@@ -259,9 +242,7 @@ void mqttData(void* response) {
 *   "message":"abcdefghyjklmnopqrstuvwxyz" -> 100 caracteres maximo
 * }
 */
-  // AUX = String(SMS_SEND_TOPIC);
-  // if(topic.indexOf(AUX)>0){
-  if(topic.indexOf("send")>0){
+  if(topic == SMS_SEND_TOPIC){
     const size_t capacity = JSON_OBJECT_SIZE(2) + 150;
     DynamicJsonDocument doc(capacity);
 
